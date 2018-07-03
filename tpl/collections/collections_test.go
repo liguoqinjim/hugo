@@ -29,6 +29,7 @@ import (
 	"github.com/gohugoio/hugo/deps"
 	"github.com/gohugoio/hugo/helpers"
 	"github.com/gohugoio/hugo/hugofs"
+	"github.com/gohugoio/hugo/langs"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -48,12 +49,13 @@ func TestAfter(t *testing.T) {
 		expect interface{}
 	}{
 		{int(2), []string{"a", "b", "c", "d"}, []string{"c", "d"}},
-		{int32(3), []string{"a", "b"}, false},
+		{int32(3), []string{"a", "b"}, []string{}},
 		{int64(2), []int{100, 200, 300}, []int{300}},
-		{100, []int{100, 200}, false},
+		{100, []int{100, 200}, []int{}},
 		{"1", []int{100, 200, 300}, []int{200, 300}},
 		{int64(-1), []int{100, 200, 300}, false},
 		{"noint", []int{100, 200, 300}, false},
+		{2, []string{}, []string{}},
 		{1, nil, false},
 		{nil, []int{100}, false},
 		{1, t, false},
@@ -69,7 +71,7 @@ func TestAfter(t *testing.T) {
 		}
 
 		require.NoError(t, err, errMsg)
-		assert.Equal(t, test.expect, result, errMsg)
+		require.Equal(t, test.expect, result, errMsg)
 	}
 }
 
@@ -369,7 +371,7 @@ func TestIntersect(t *testing.T) {
 func TestIsSet(t *testing.T) {
 	t.Parallel()
 
-	ns := New(newDeps(viper.New()))
+	ns := newTestNs()
 
 	for i, test := range []struct {
 		a      interface{}
@@ -774,7 +776,7 @@ type TstX struct {
 }
 
 func newDeps(cfg config.Provider) *deps.Deps {
-	l := helpers.NewLanguage("en", cfg)
+	l := langs.NewLanguage("en", cfg)
 	l.Set("i18nDir", "i18n")
 	cs, err := helpers.NewContentSpec(l)
 	if err != nil {
@@ -786,4 +788,10 @@ func newDeps(cfg config.Provider) *deps.Deps {
 		ContentSpec: cs,
 		Log:         jww.NewNotepad(jww.LevelError, jww.LevelError, os.Stdout, ioutil.Discard, "", log.Ldate|log.Ltime),
 	}
+}
+
+func newTestNs() *Namespace {
+	v := viper.New()
+	v.Set("contentDir", "content")
+	return New(newDeps(v))
 }

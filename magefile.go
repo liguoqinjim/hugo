@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -67,6 +68,10 @@ func flagEnv() map[string]string {
 	}
 }
 
+func Generate() error {
+	return sh.RunWith(flagEnv(), goexe, "generate", path.Join(packageName, "tpl/tplimpl/embedded/generate"))
+}
+
 // Build hugo without git info
 func HugoNoGitInfo() error {
 	ldflags = noGitLdflags
@@ -122,7 +127,7 @@ func TestRace() error {
 
 // Run gofmt linter
 func Fmt() error {
-	if isGoTip() {
+	if !isGoLatest() {
 		return nil
 	}
 	pkgs, err := hugoPackages()
@@ -258,6 +263,6 @@ func CheckVendor() error {
 	return nil
 }
 
-func isGoTip() bool {
-	return strings.Contains(runtime.Version(), "devel")
+func isGoLatest() bool {
+	return strings.Contains(runtime.Version(), "1.10")
 }

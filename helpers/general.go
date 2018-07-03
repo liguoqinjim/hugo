@@ -20,18 +20,20 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/gohugoio/hugo/hugofs"
+
 	"github.com/spf13/afero"
 
 	"github.com/jdkato/prose/transform"
 
 	bp "github.com/gohugoio/hugo/bufferpool"
-	"github.com/spf13/cast"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/pflag"
 )
@@ -127,30 +129,6 @@ func ReaderToBytes(lines io.Reader) []byte {
 	bc := make([]byte, b.Len(), b.Len())
 	copy(bc, b.Bytes())
 	return bc
-}
-
-// ToLowerMap makes all the keys in the given map lower cased and will do so
-// recursively.
-// Notes:
-// * This will modify the map given.
-// * Any nested map[interface{}]interface{} will be converted to map[string]interface{}.
-func ToLowerMap(m map[string]interface{}) {
-	for k, v := range m {
-		switch v.(type) {
-		case map[interface{}]interface{}:
-			v = cast.ToStringMap(v)
-			ToLowerMap(v.(map[string]interface{}))
-		case map[string]interface{}:
-			ToLowerMap(v.(map[string]interface{}))
-		}
-
-		lKey := strings.ToLower(k)
-		if k != lKey {
-			delete(m, k)
-			m[lKey] = v
-		}
-
-	}
 }
 
 // ReaderToString is the same as ReaderToBytes, but returns a string.
@@ -255,12 +233,8 @@ func compareStringSlices(a, b []string) bool {
 	return true
 }
 
-// ThemeSet checks whether a theme is in use or not.
-func (p *PathSpec) ThemeSet() bool {
-	return p.theme != ""
-}
-
-type logPrinter interface {
+// LogPrinter is the common interface of the JWWs loggers.
+type LogPrinter interface {
 	// Println is the only common method that works in all of JWWs loggers.
 	Println(a ...interface{})
 }
@@ -268,7 +242,7 @@ type logPrinter interface {
 // DistinctLogger ignores duplicate log statements.
 type DistinctLogger struct {
 	sync.RWMutex
-	logger logPrinter
+	logger LogPrinter
 	m      map[string]bool
 }
 
@@ -309,6 +283,11 @@ func NewDistinctErrorLogger() *DistinctLogger {
 	return &DistinctLogger{m: make(map[string]bool), logger: jww.ERROR}
 }
 
+// NewDistinctLogger creates a new DistinctLogger that logs to the provided logger.
+func NewDistinctLogger(logger LogPrinter) *DistinctLogger {
+	return &DistinctLogger{m: make(map[string]bool), logger: logger}
+}
+
 // NewDistinctWarnLogger creates a new DistinctLogger that logs WARNs
 func NewDistinctWarnLogger() *DistinctLogger {
 	return &DistinctLogger{m: make(map[string]bool), logger: jww.WARN}
@@ -345,11 +324,11 @@ func InitLoggers() {
 // plenty of time to fix their templates.
 func Deprecated(object, item, alternative string, err bool) {
 	if err {
-		DistinctErrorLog.Printf("%s's %s is deprecated and will be removed in Hugo %s. %s.", object, item, CurrentHugoVersion.Next().ReleaseVersion(), alternative)
+		DistinctErrorLog.Printf("%s's %s is deprecated and will be removed in Hugo %s. %s", object, item, CurrentHugoVersion.Next().ReleaseVersion(), alternative)
 
 	} else {
 		// Make sure the users see this while avoiding build breakage. This will not lead to an os.Exit(-1)
-		DistinctFeedbackLog.Printf("WARNING: %s's %s is deprecated and will be removed in a future release. %s.", object, item, alternative)
+		DistinctFeedbackLog.Printf("WARNING: %s's %s is deprecated and will be removed in a future release. %s", object, item, alternative)
 	}
 }
 
@@ -464,4 +443,31 @@ func DiffStringSlices(slice1 []string, slice2 []string) []string {
 	}
 
 	return diffStr
+}
+
+// DiffString splits the strings into fields and runs it into DiffStringSlices.
+// Useful for tests.
+func DiffStrings(s1, s2 string) []string {
+	return DiffStringSlices(strings.Fields(s1), strings.Fields(s2))
+}
+
+// PrintFs prints the given filesystem to the given writer starting from the given path.
+// This is useful for debugging.
+func PrintFs(fs afero.Fs, path string, w io.Writer) {
+	if fs == nil {
+		return
+	}
+	afero.Walk(fs, path, func(path string, info os.FileInfo, err error) error {
+		if info != nil && !info.IsDir() {
+			s := path
+			if lang, ok := info.(hugofs.LanguageAnnouncer); ok {
+				s = s + "\tLANG: " + lang.Lang()
+			}
+			if fp, ok := info.(hugofs.FilePather); ok {
+				s = s + "\tRF: " + fp.Filename() + "\tBP: " + fp.BaseDir()
+			}
+			fmt.Fprintln(w, "    ", s)
+		}
+		return nil
+	})
 }

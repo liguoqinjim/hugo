@@ -19,8 +19,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
+
+	"github.com/gohugoio/hugo/helpers"
+
+	"github.com/spf13/cast"
 
 	"github.com/BurntSushi/toml"
 	"github.com/chaseadamsio/goorgeous"
@@ -201,12 +206,104 @@ func removeTOMLIdentifier(datum []byte) []byte {
 func HandleYAMLMetaData(datum []byte) (map[string]interface{}, error) {
 	m := map[string]interface{}{}
 	err := yaml.Unmarshal(datum, &m)
+
+	// To support boolean keys, the `yaml` package unmarshals maps to
+	// map[interface{}]interface{}. Here we recurse through the result
+	// and change all maps to map[string]interface{} like we would've
+	// gotten from `json`.
+	if err == nil {
+		for k, v := range m {
+			if vv, changed := stringifyMapKeys(v); changed {
+				m[k] = vv
+			}
+		}
+	}
+
 	return m, err
+}
+
+// HandleYAMLData unmarshals YAML-encoded datum and returns a Go interface
+// representing the encoded data structure.
+func HandleYAMLData(datum []byte) (interface{}, error) {
+	var m interface{}
+	err := yaml.Unmarshal(datum, &m)
+	if err != nil {
+		return nil, err
+	}
+
+	// To support boolean keys, the `yaml` package unmarshals maps to
+	// map[interface{}]interface{}. Here we recurse through the result
+	// and change all maps to map[string]interface{} like we would've
+	// gotten from `json`.
+	if mm, changed := stringifyMapKeys(m); changed {
+		return mm, nil
+	}
+
+	return m, nil
+}
+
+// stringifyMapKeys recurses into in and changes all instances of
+// map[interface{}]interface{} to map[string]interface{}. This is useful to
+// work around the impedence mismatch between JSON and YAML unmarshaling that's
+// described here: https://github.com/go-yaml/yaml/issues/139
+//
+// Inspired by https://github.com/stripe/stripe-mock, MIT licensed
+func stringifyMapKeys(in interface{}) (interface{}, bool) {
+	switch in := in.(type) {
+	case []interface{}:
+		for i, v := range in {
+			if vv, replaced := stringifyMapKeys(v); replaced {
+				in[i] = vv
+			}
+		}
+	case map[interface{}]interface{}:
+		res := make(map[string]interface{})
+		var (
+			ok  bool
+			err error
+		)
+		for k, v := range in {
+			var ks string
+
+			if ks, ok = k.(string); !ok {
+				ks, err = cast.ToStringE(k)
+				if err != nil {
+					ks = fmt.Sprintf("%v", k)
+				}
+				// TODO(bep) added in Hugo 0.37, remove some time in the future.
+				helpers.DistinctFeedbackLog.Printf("WARNING: YAML data/frontmatter with keys of type %T is since Hugo 0.37 converted to strings", k)
+			}
+			if vv, replaced := stringifyMapKeys(v); replaced {
+				res[ks] = vv
+			} else {
+				res[ks] = v
+			}
+		}
+		return res, true
+	}
+
+	return nil, false
 }
 
 // HandleJSONMetaData unmarshals JSON-encoded datum and returns a Go interface
 // representing the encoded data structure.
 func HandleJSONMetaData(datum []byte) (map[string]interface{}, error) {
+	m := make(map[string]interface{})
+
+	if datum == nil {
+		// Package json returns on error on nil input.
+		// Return an empty map to be consistent with our other supported
+		// formats.
+		return m, nil
+	}
+
+	err := json.Unmarshal(datum, &m)
+	return m, err
+}
+
+// HandleJSONData unmarshals JSON-encoded datum and returns a Go interface
+// representing the encoded data structure.
+func HandleJSONData(datum []byte) (interface{}, error) {
 	if datum == nil {
 		// Package json returns on error on nil input.
 		// Return an empty map to be consistent with our other supported
@@ -214,7 +311,7 @@ func HandleJSONMetaData(datum []byte) (map[string]interface{}, error) {
 		return make(map[string]interface{}), nil
 	}
 
-	var f map[string]interface{}
+	var f interface{}
 	err := json.Unmarshal(datum, &f)
 	return f, err
 }

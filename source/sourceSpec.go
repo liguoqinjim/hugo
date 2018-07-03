@@ -18,17 +18,19 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/gohugoio/hugo/config"
+	"github.com/gohugoio/hugo/langs"
+	"github.com/spf13/afero"
+
 	"github.com/gohugoio/hugo/helpers"
-	"github.com/gohugoio/hugo/hugofs"
 	"github.com/spf13/cast"
 )
 
 // SourceSpec abstracts language-specific file creation.
 // TODO(bep) rename to Spec
 type SourceSpec struct {
-	Cfg config.Provider
-	Fs  *hugofs.Fs
+	*helpers.PathSpec
+
+	SourceFs afero.Fs
 
 	// This is set if the ignoreFiles config is set.
 	ignoreFilesRe []*regexp.Regexp
@@ -38,8 +40,9 @@ type SourceSpec struct {
 	DisabledLanguages      map[string]bool
 }
 
-// NewSourceSpec initializes SourceSpec using languages from a given configuration.
-func NewSourceSpec(cfg config.Provider, fs *hugofs.Fs) *SourceSpec {
+// NewSourceSpec initializes SourceSpec using languages the given filesystem and PathSpec.
+func NewSourceSpec(ps *helpers.PathSpec, fs afero.Fs) *SourceSpec {
+	cfg := ps.Cfg
 	defaultLang := cfg.GetString("defaultContentLanguage")
 	languages := cfg.GetStringMap("languages")
 
@@ -50,7 +53,7 @@ func NewSourceSpec(cfg config.Provider, fs *hugofs.Fs) *SourceSpec {
 	}
 
 	if len(languages) == 0 {
-		l := helpers.NewDefaultLanguage(cfg)
+		l := langs.NewDefaultLanguage(cfg)
 		languages[l.Lang] = l
 		defaultLang = l.Lang
 	}
@@ -69,10 +72,18 @@ func NewSourceSpec(cfg config.Provider, fs *hugofs.Fs) *SourceSpec {
 		}
 	}
 
-	return &SourceSpec{ignoreFilesRe: regexps, Cfg: cfg, Fs: fs, Languages: languages, DefaultContentLanguage: defaultLang, DisabledLanguages: disabledLangsSet}
+	return &SourceSpec{ignoreFilesRe: regexps, PathSpec: ps, SourceFs: fs, Languages: languages, DefaultContentLanguage: defaultLang, DisabledLanguages: disabledLangsSet}
+
 }
 
 func (s *SourceSpec) IgnoreFile(filename string) bool {
+	if filename == "" {
+		if _, ok := s.SourceFs.(*afero.OsFs); ok {
+			return true
+		}
+		return false
+	}
+
 	base := filepath.Base(filename)
 
 	if len(base) > 0 {
@@ -99,7 +110,7 @@ func (s *SourceSpec) IgnoreFile(filename string) bool {
 }
 
 func (s *SourceSpec) IsRegularSourceFile(filename string) (bool, error) {
-	fi, err := helpers.LstatIfOs(s.Fs.Source, filename)
+	fi, err := helpers.LstatIfPossible(s.SourceFs, filename)
 	if err != nil {
 		return false, err
 	}
@@ -110,7 +121,7 @@ func (s *SourceSpec) IsRegularSourceFile(filename string) (bool, error) {
 
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		link, err := filepath.EvalSymlinks(filename)
-		fi, err = helpers.LstatIfOs(s.Fs.Source, link)
+		fi, err = helpers.LstatIfPossible(s.SourceFs, link)
 		if err != nil {
 			return false, err
 		}

@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gohugoio/hugo/langs"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
@@ -56,9 +58,10 @@ func TestMakePath(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		v := viper.New()
-		l := NewDefaultLanguage(v)
+		v := newTestCfg()
 		v.Set("removePathAccents", test.removeAccents)
+
+		l := langs.NewDefaultLanguage(v)
 		p, err := NewPathSpec(hugofs.NewMem(v), l)
 		require.NoError(t, err)
 
@@ -71,7 +74,13 @@ func TestMakePath(t *testing.T) {
 
 func TestMakePathSanitized(t *testing.T) {
 	v := viper.New()
-	l := NewDefaultLanguage(v)
+	v.Set("contentDir", "content")
+	v.Set("dataDir", "data")
+	v.Set("i18nDir", "i18n")
+	v.Set("layoutDir", "layouts")
+	v.Set("archetypeDir", "archetypes")
+
+	l := langs.NewDefaultLanguage(v)
 	p, _ := NewPathSpec(hugofs.NewMem(v), l)
 
 	tests := []struct {
@@ -95,11 +104,11 @@ func TestMakePathSanitized(t *testing.T) {
 }
 
 func TestMakePathSanitizedDisablePathToLower(t *testing.T) {
-	v := viper.New()
+	v := newTestCfg()
 
 	v.Set("disablePathToLower", true)
 
-	l := NewDefaultLanguage(v)
+	l := langs.NewDefaultLanguage(v)
 	p, _ := NewPathSpec(hugofs.NewMem(v), l)
 
 	tests := []struct {
@@ -670,10 +679,10 @@ func TestFindCWD(t *testing.T) {
 
 	//cwd, _ := os.Getwd()
 	data := []test{
-	//{cwd, nil},
-	// Commenting this out. It doesn't work properly.
-	// There's a good reason why we don't use os.Getwd(), it doesn't actually work the way we want it to.
-	// I really don't know a better way to test this function. - SPF 2014.11.04
+		//{cwd, nil},
+		// Commenting this out. It doesn't work properly.
+		// There's a good reason why we don't use os.Getwd(), it doesn't actually work the way we want it to.
+		// I really don't know a better way to test this function. - SPF 2014.11.04
 	}
 	for i, d := range data {
 		dir, err := FindCWD()

@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 10);
+/******/ 	return __webpack_require__(__webpack_require__.s = 11);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -101,7 +101,7 @@ document.onreadystatechange = function () {
     if (!contentBlock) {
       return;
     }
-    for (var level = 2; level <= 2; level++) {
+    for (var level = 2; level <= 4; level++) {
       linkifyAnchors(level, contentBlock);
     }
   }
@@ -114,9 +114,12 @@ document.onreadystatechange = function () {
 "use strict";
 
 
-var Clipboard = __webpack_require__(11);
+var Clipboard = __webpack_require__(12);
 new Clipboard('.copy', {
   target: function target(trigger) {
+    if (trigger.classList.contains('copy-toggle')) {
+      return trigger.previousElementSibling;
+    }
     return trigger.nextElementSibling;
   }
 }).on('success', function (e) {
@@ -194,7 +197,7 @@ if (article) {
 "use strict";
 
 
-var docsearch = __webpack_require__(12);
+var docsearch = __webpack_require__(13);
 docsearch({
   apiKey: '167e7998590aebda7f9fedcf86bc4a55',
   indexName: 'hugodocs',
@@ -209,8 +212,9 @@ docsearch({
 "use strict";
 
 
-var lazysizes = __webpack_require__(13);
+var lazysizes = __webpack_require__(14);
 // var lsnoscript = require('lazysizes/plugins/noscript/ls.noscript.js');
+var unveilhooks = __webpack_require__(15);
 
 /***/ }),
 /* 5 */
@@ -264,7 +268,7 @@ document.documentElement.className = document.documentElement.className.replace(
 "use strict";
 
 
-var scrollDir = __webpack_require__(14);
+var scrollDir = __webpack_require__(16);
 
 /***/ }),
 /* 8 */
@@ -352,18 +356,68 @@ var scrollDir = __webpack_require__(14);
 
 /***/ }),
 /* 9 */
-/***/ (function(module, exports) {
-
-// removed by extract-text-webpack-plugin
-
-/***/ }),
-/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _main = __webpack_require__(9);
+/**
+ * Scripts which manages Code Toggle tabs.
+ */
+var i;
+// store tabs variable
+var allTabs = document.querySelectorAll("[data-toggle-tab]");
+var allPanes = document.querySelectorAll("[data-pane]");
+
+function toggleTabs(event) {
+
+	if (event.target) {
+		event.preventDefault();
+		var clickedTab = event.currentTarget;
+		var targetKey = clickedTab.getAttribute("data-toggle-tab");
+	} else {
+		var targetKey = event;
+	}
+	// We store the config language selected in users' localStorage
+	if (window.localStorage) {
+		window.localStorage.setItem("configLangPref", targetKey);
+	}
+	var selectedTabs = document.querySelectorAll("[data-toggle-tab='" + targetKey + "']");
+	var selectedPanes = document.querySelectorAll("[data-pane='" + targetKey + "']");
+
+	for (var i = 0; i < allTabs.length; i++) {
+		allTabs[i].classList.remove("active");
+		allPanes[i].classList.remove("active");
+	}
+
+	for (var i = 0; i < selectedTabs.length; i++) {
+		selectedTabs[i].classList.add("active");
+		selectedPanes[i].classList.add("active");
+	}
+}
+
+for (i = 0; i < allTabs.length; i++) {
+	allTabs[i].addEventListener("click", toggleTabs);
+}
+// Upon page load, if user has a prefered language in its localStorage, tabs are set to it.
+if (window.localStorage.getItem('configLangPref')) {
+	toggleTabs(window.localStorage.getItem('configLangPref'));
+}
+
+/***/ }),
+/* 10 */
+/***/ (function(module, exports) {
+
+// removed by extract-text-webpack-plugin
+
+/***/ }),
+/* 11 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _main = __webpack_require__(10);
 
 var _main2 = _interopRequireDefault(_main);
 
@@ -383,12 +437,14 @@ __webpack_require__(7);
 
 __webpack_require__(8);
 
+__webpack_require__(9);
+
 __webpack_require__(6);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var require;var require;/*!
@@ -1183,10 +1239,10 @@ module.exports = E;
 });
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/*! docsearch 2.4.1 | © Algolia | github.com/algolia/docsearch */
+/*! docsearch 2.3.3 | © Algolia | github.com/algolia/docsearch */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(true)
 		module.exports = factory();
@@ -1747,6 +1803,17 @@ function localstorage(){
 
 /***/ }),
 /* 7 */
+/***/ (function(module, exports) {
+
+var toString = {}.toString;
+
+module.exports = Array.isArray || function (arr) {
+  return toString.call(arr) == '[object Array]';
+};
+
+
+/***/ }),
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var foreach = __webpack_require__(2);
@@ -1761,7 +1828,7 @@ module.exports = function map(arr, fn) {
 
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1865,7 +1932,7 @@ module.exports = css;
 
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1971,17 +2038,6 @@ function bindContext(fn, context) {
     fn.bind(context) :
     function() { fn.apply(context, [].slice.call(arguments, 0)); };
 }
-
-
-/***/ }),
-/* 10 */
-/***/ (function(module, exports) {
-
-var toString = {}.toString;
-
-module.exports = Array.isArray || function (arr) {
-  return toString.call(arr) == '[object Array]';
-};
 
 
 /***/ }),
@@ -3650,7 +3706,7 @@ module.exports = "0.28.0";
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = '2.4.1';
+exports.default = '2.3.3';
 
 /***/ }),
 /* 19 */
@@ -3778,8 +3834,8 @@ function AlgoliaSearchCore(applicationID, apiKey, opts) {
   var debug = __webpack_require__(6)('algoliasearch');
 
   var clone = __webpack_require__(4);
-  var isArray = __webpack_require__(10);
-  var map = __webpack_require__(7);
+  var isArray = __webpack_require__(7);
+  var map = __webpack_require__(8);
 
   var usage = 'Usage: algoliasearch(applicationID, apiKey, opts)';
 
@@ -4241,8 +4297,8 @@ AlgoliaSearchCore.prototype._computeRequestHeaders = function(additionalUA, with
  * @return {Promise|undefined} Returns a promise if no callback given
  */
 AlgoliaSearchCore.prototype.search = function(queries, opts, callback) {
-  var isArray = __webpack_require__(10);
-  var map = __webpack_require__(7);
+  var isArray = __webpack_require__(7);
+  var map = __webpack_require__(8);
 
   var usage = 'Usage: client.search(arrayOfQueries[, callback])';
 
@@ -4871,8 +4927,8 @@ IndexCore.prototype.getObject = function(objectID, attrs, callback) {
 * @param objectIDs the array of unique identifier of objects to retrieve
 */
 IndexCore.prototype.getObjects = function(objectIDs, attributesToRetrieve, callback) {
-  var isArray = __webpack_require__(10);
-  var map = __webpack_require__(7);
+  var isArray = __webpack_require__(7);
+  var map = __webpack_require__(8);
 
   var usage = 'Usage: index.getObjects(arrayOfObjectIDs[, callback])';
 
@@ -5586,8 +5642,8 @@ var datumKey = 'aaDatum';
 var _ = __webpack_require__(0);
 var DOM = __webpack_require__(1);
 var html = __webpack_require__(14);
-var css = __webpack_require__(8);
-var EventEmitter = __webpack_require__(9);
+var css = __webpack_require__(9);
+var EventEmitter = __webpack_require__(10);
 
 // constructor
 // -----------
@@ -5845,9 +5901,9 @@ module.exports = Dataset;
 
 var _ = __webpack_require__(0);
 var DOM = __webpack_require__(1);
-var EventEmitter = __webpack_require__(9);
+var EventEmitter = __webpack_require__(10);
 var Dataset = __webpack_require__(38);
-var css = __webpack_require__(8);
+var css = __webpack_require__(9);
 
 // constructor
 // -----------
@@ -6245,7 +6301,7 @@ specialKeyCodeMap = {
 
 var _ = __webpack_require__(0);
 var DOM = __webpack_require__(1);
-var EventEmitter = __webpack_require__(9);
+var EventEmitter = __webpack_require__(10);
 
 // constructor
 // -----------
@@ -6587,7 +6643,7 @@ var EventBus = __webpack_require__(13);
 var Input = __webpack_require__(40);
 var Dropdown = __webpack_require__(39);
 var html = __webpack_require__(14);
-var css = __webpack_require__(8);
+var css = __webpack_require__(9);
 
 // constructor
 // -----------
@@ -7545,8 +7601,6 @@ var DocSearch = function () {
     } : _ref$autocompleteOpti,
         _ref$transformData = _ref.transformData,
         transformData = _ref$transformData === undefined ? false : _ref$transformData,
-        _ref$queryHook = _ref.queryHook,
-        queryHook = _ref$queryHook === undefined ? false : _ref$queryHook,
         _ref$handleSelected = _ref.handleSelected,
         handleSelected = _ref$handleSelected === undefined ? false : _ref$handleSelected,
         _ref$enhancedSearchIn = _ref.enhancedSearchInput,
@@ -7564,7 +7618,6 @@ var DocSearch = function () {
       algoliaOptions: algoliaOptions,
       autocompleteOptions: autocompleteOptions,
       transformData: transformData,
-      queryHook: queryHook,
       handleSelected: handleSelected,
       enhancedSearchInput: enhancedSearchInput,
       layout: layout
@@ -7594,7 +7647,7 @@ var DocSearch = function () {
     }
 
     this.autocomplete = (0, _autocomplete2.default)(this.input, autocompleteOptions, [{
-      source: this.getAutocompleteSource(transformData, queryHook),
+      source: this.getAutocompleteSource(transformData),
       templates: {
         suggestion: DocSearch.getSuggestionTemplate(this.isSimpleLayout),
         footer: _templates2.default.footer,
@@ -7626,18 +7679,13 @@ var DocSearch = function () {
      * the Algolia index and call the callbacks with the formatted hits.
      * @function getAutocompleteSource
      * @param  {function} transformData An optional function to transform the hits
-     * @param {function} queryHook An optional function to transform the query
      * @returns {function} Method to be passed as the `source` option of
      * autocomplete
      */
-    value: function getAutocompleteSource(transformData, queryHook) {
+    value: function getAutocompleteSource(transformData) {
       var _this = this;
 
       return function (query, callback) {
-        if (queryHook) {
-          query = queryHook(query) || query;
-        }
-
         _this.client.search([{
           indexName: _this.indexName,
           query: query,
@@ -10996,7 +11044,7 @@ module.exports = toFactory;
 //# sourceMappingURL=docsearch.js.map
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports) {
 
 (function(window, factory) {
@@ -11692,17 +11740,151 @@ module.exports = toFactory;
 
 
 /***/ }),
-/* 14 */
+/* 15 */
+/***/ (function(module, exports) {
+
+/*
+This plugin extends lazySizes to lazyLoad:
+background images, videos/posters and scripts
+
+Background-Image:
+For background images, use data-bg attribute:
+<div class="lazyload" data-bg="bg-img.jpg"></div>
+
+ Video:
+ For video/audio use data-poster and preload="none":
+ <video class="lazyload" data-poster="poster.jpg" preload="none">
+ <!-- sources -->
+ </video>
+
+ Scripts:
+ For scripts use data-script:
+ <div class="lazyload" data-script="module-name.js"></div>
+
+
+ Script modules using require:
+ For modules using require use data-require:
+ <div class="lazyload" data-require="module-name"></div>
+*/
+
+(function(window, document){
+	/*jshint eqnull:true */
+	'use strict';
+	var bgLoad, regBgUrlEscape;
+	var uniqueUrls = {};
+
+	if(document.addEventListener){
+		regBgUrlEscape = /\(|\)|\s|'/;
+
+		bgLoad = function (url, cb){
+			var img = document.createElement('img');
+			img.onload = function(){
+				img.onload = null;
+				img.onerror = null;
+				img = null;
+				cb();
+			};
+			img.onerror = img.onload;
+
+			img.src = url;
+
+			if(img && img.complete && img.onload){
+				img.onload();
+			}
+		};
+
+		addEventListener('lazybeforeunveil', function(e){
+			var tmp, load, bg, poster;
+			if(!e.defaultPrevented) {
+
+				if(e.target.preload == 'none'){
+					e.target.preload = 'auto';
+				}
+
+				tmp = e.target.getAttribute('data-link');
+				if(tmp){
+					addStyleScript(tmp, true);
+				}
+
+				// handle data-script
+				tmp = e.target.getAttribute('data-script');
+				if(tmp){
+					addStyleScript(tmp);
+				}
+
+				// handle data-require
+				tmp = e.target.getAttribute('data-require');
+				if(tmp){
+					if(lazySizes.cfg.requireJs){
+						lazySizes.cfg.requireJs([tmp]);
+					} else {
+						addStyleScript(tmp);
+					}
+				}
+
+				// handle data-bg
+				bg = e.target.getAttribute('data-bg');
+				if (bg) {
+					e.detail.firesLoad = true;
+					load = function(){
+						e.target.style.backgroundImage = 'url(' + (regBgUrlEscape.test(bg) ? JSON.stringify(bg) : bg ) + ')';
+						e.detail.firesLoad = false;
+						lazySizes.fire(e.target, '_lazyloaded', {}, true, true);
+					};
+
+					bgLoad(bg, load);
+				}
+
+				// handle data-poster
+				poster = e.target.getAttribute('data-poster');
+				if(poster){
+					e.detail.firesLoad = true;
+					load = function(){
+						e.target.poster = poster;
+						e.detail.firesLoad = false;
+						lazySizes.fire(e.target, '_lazyloaded', {}, true, true);
+					};
+
+					bgLoad(poster, load);
+
+				}
+			}
+		}, false);
+
+	}
+
+	function addStyleScript(src, style){
+		if(uniqueUrls[src]){
+			return;
+		}
+		var elem = document.createElement(style ? 'link' : 'script');
+		var insertElem = document.getElementsByTagName('script')[0];
+
+		if(style){
+			elem.rel = 'stylesheet';
+			elem.href = src;
+		} else {
+			elem.src = src;
+		}
+		uniqueUrls[src] = true;
+		uniqueUrls[elem.src || elem.href] = true;
+		insertElem.parentNode.insertBefore(elem, insertElem);
+	}
+})(window, document);
+
+
+/***/ }),
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /**
  * scrolldir - Vertical scroll direction in CSS
- * @version v1.2.17
+ * @version v1.2.8
  * @link https://github.com/dollarshaveclub/scrolldir.git
  * @author Patrick Fisher <patrick@pwfisher.com>
  * @license MIT
 **/
-!function(t,e){ true?e():"function"==typeof define&&define.amd?define(e):e()}(0,function(){"use strict";function t(){var t=o.scrollY||o.pageYOffset,e=l.timeStamp,i="down"===d?Math.max:Math.min,p=f.offsetHeight-o.innerHeight;if(t=Math.max(0,t),t=Math.min(p,t),c.unshift({y:t,t:e}),c.pop(),t===i(m,t))return v=e,void(m=t);var b=e-u;if(b>v){m=t;for(var w=0;w<a&&(c[w]&&!(c[w].t<b));w+=1)m=i(m,c[w].y)}Math.abs(t-m)>s&&(m=t,v=e,d="down"===d?"up":"down",n.setAttribute(r,d))}function e(e){return l=e,o.requestAnimationFrame(t)}var i={el:document.documentElement,win:window,attribute:"data-scrolldir",dir:"down"},n=void 0,o=void 0,r=void 0,d=void 0,f=document.body,a=32,u=512,s=64,c=Array(a),l=void 0,m=void 0,v=0;!function(t){n=t&&t.el||i.el,o=t&&t.win||i.win,r=t&&t.attribute||i.attribute,d=t&&t.direction||i.dir,t&&!0===t.off?(n.setAttribute(r,"off"),o.removeEventListener("scroll",e)):(m=o.scrollY||o.pageYOffset,n.setAttribute(r,d),o.addEventListener("scroll",e))}()});
+!function(t,e){ true?e():"function"==typeof define&&define.amd?define(e):e()}(0,function(){"use strict";!function(){var t=document.documentElement,e=window,n=document.body,o=Array(32),i="down",d=void 0,r=void 0,a=0,f=function(){var f=e.scrollY,u=d.timeStamp,c="down"===i?Math.max:Math.min,s=n.offsetHeight-e.innerHeight;if(f=Math.max(0,f),f=Math.min(s,f),o.unshift({y:f,t:u}),o.pop(),f===c(r,f))return a=u,void(r=f);var m=u-512;if(m>a){r=f;for(var l=0;l<32&&o[l]&&!(o[l].t<m);l+=1)r=c(r,o[l].y)}Math.abs(f-r)>64&&(r=f,a=u,i="down"===i?"up":"down",t.setAttribute("data-scrolldir",i))},u=function(t){d=t,e.requestAnimationFrame(f)};r=e.scrollY,t.setAttribute("data-scrolldir",i),e.addEventListener("scroll",u)}()});
 
 /***/ })
 /******/ ]);

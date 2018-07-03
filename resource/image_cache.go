@@ -24,11 +24,11 @@ import (
 )
 
 type imageCache struct {
-	absPublishDir string
-	absCacheDir   string
-	pathSpec      *helpers.PathSpec
-	mu            sync.RWMutex
-	store         map[string]*Image
+	cacheDir string
+	pathSpec *helpers.PathSpec
+	mu       sync.RWMutex
+
+	store map[string]*Image
 }
 
 func (c *imageCache) isInCache(key string) bool {
@@ -41,17 +41,24 @@ func (c *imageCache) isInCache(key string) bool {
 func (c *imageCache) deleteByPrefix(prefix string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for k, _ := range c.store {
+	for k := range c.store {
 		if strings.HasPrefix(k, prefix) {
 			delete(c.store, k)
 		}
 	}
 }
 
-func (c *imageCache) getOrCreate(
-	parent *Image, key string, create func(resourceCacheFilename string) (*Image, error)) (*Image, error) {
+func (c *imageCache) clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.store = make(map[string]*Image)
+}
 
-	relTargetFilename := key
+func (c *imageCache) getOrCreate(
+	parent *Image, conf imageConfig, create func(resourceCacheFilename string) (*Image, error)) (*Image, error) {
+
+	relTarget := parent.relTargetPathFromConfig(conf)
+	key := parent.relTargetPathForRel(relTarget.path(), false)
 
 	if c.pathSpec.Language != nil {
 		// Avoid do and store more work than needed. The language versions will in
@@ -69,22 +76,29 @@ func (c *imageCache) getOrCreate(
 	}
 
 	// Now look in the file cache.
-	cacheFilename := filepath.Join(c.absCacheDir, key)
+	// Multiple Go routines can invoke same operation on the same image, so
+	// we need to make sure this is serialized per source image.
+	parent.createMu.Lock()
+	defer parent.createMu.Unlock()
+
+	cacheFilename := filepath.Join(c.cacheDir, key)
 
 	// The definition of this counter is not that we have processed that amount
 	// (e.g. resized etc.), it can be fetched from file cache,
 	//  but the count of processed image variations for this site.
 	c.pathSpec.ProcessingStats.Incr(&c.pathSpec.ProcessingStats.ProcessedImages)
 
-	exists, err := helpers.Exists(cacheFilename, c.pathSpec.Fs.Source)
+	exists, err := helpers.Exists(cacheFilename, c.pathSpec.BaseFs.ResourcesFs)
 	if err != nil {
 		return nil, err
 	}
 
 	if exists {
 		img = parent.clone()
-		img.relTargetPath = relTargetFilename
-		img.absSourceFilename = cacheFilename
+		img.relTargetPath.file = relTarget.file
+		img.sourceFilename = cacheFilename
+		// We have to look resources file system for this.
+		img.overriddenSourceFs = img.spec.BaseFs.ResourcesFs
 	} else {
 		img, err = create(cacheFilename)
 		if err != nil {
@@ -111,8 +125,8 @@ func (c *imageCache) getOrCreate(
 
 }
 
-func newImageCache(ps *helpers.PathSpec, absCacheDir, absPublishDir string) *imageCache {
-	return &imageCache{pathSpec: ps, store: make(map[string]*Image), absCacheDir: absCacheDir, absPublishDir: absPublishDir}
+func newImageCache(ps *helpers.PathSpec, cacheDir string) *imageCache {
+	return &imageCache{pathSpec: ps, store: make(map[string]*Image), cacheDir: cacheDir}
 }
 
 func timeTrack(start time.Time, name string) {

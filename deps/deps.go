@@ -4,10 +4,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gohugoio/hugo/config"
 	"github.com/gohugoio/hugo/helpers"
 	"github.com/gohugoio/hugo/hugofs"
+	"github.com/gohugoio/hugo/langs"
 	"github.com/gohugoio/hugo/metrics"
 	"github.com/gohugoio/hugo/output"
 	"github.com/gohugoio/hugo/source"
@@ -21,6 +23,9 @@ import (
 type Deps struct {
 	// The logger to use.
 	Log *jww.Notepad `json:"-"`
+
+	// Used to log errors that may repeat itself many times.
+	DistinctErrorLog *helpers.DistinctLogger
 
 	// The templates to use. This will usually implement the full tpl.TemplateHandler.
 	Tmpl tpl.TemplateFinder `json:"-"`
@@ -43,7 +48,7 @@ type Deps struct {
 	// The translation func to use
 	Translate func(translationID string, args ...interface{}) string `json:"-"`
 
-	Language *helpers.Language
+	Language *langs.Language
 
 	// All the output formats available for the current site.
 	OutputFormatsConfig output.Formats
@@ -54,6 +59,9 @@ type Deps struct {
 	translationProvider ResourceProvider
 
 	Metrics metrics.Provider
+
+	// Timeout is configurable in site config.
+	Timeout time.Duration
 }
 
 // ResourceProvider is used to create and refresh, and clone resources needed.
@@ -126,11 +134,19 @@ func New(cfg DepsCfg) (*Deps, error) {
 		return nil, err
 	}
 
-	sp := source.NewSourceSpec(cfg.Language, fs)
+	sp := source.NewSourceSpec(ps, fs.Source)
+
+	timeoutms := cfg.Language.GetInt("timeout")
+	if timeoutms <= 0 {
+		timeoutms = 3000
+	}
+
+	distinctErrorLogger := helpers.NewDistinctLogger(logger.ERROR)
 
 	d := &Deps{
 		Fs:                  fs,
 		Log:                 logger,
+		DistinctErrorLog:    distinctErrorLogger,
 		templateProvider:    cfg.TemplateProvider,
 		translationProvider: cfg.TranslationProvider,
 		WithTemplate:        cfg.WithTemplate,
@@ -139,6 +155,7 @@ func New(cfg DepsCfg) (*Deps, error) {
 		SourceSpec:          sp,
 		Cfg:                 cfg.Language,
 		Language:            cfg.Language,
+		Timeout:             time.Duration(timeoutms) * time.Millisecond,
 	}
 
 	if cfg.Cfg.GetBool("templateMetrics") {
@@ -150,10 +167,10 @@ func New(cfg DepsCfg) (*Deps, error) {
 
 // ForLanguage creates a copy of the Deps with the language dependent
 // parts switched out.
-func (d Deps) ForLanguage(l *helpers.Language) (*Deps, error) {
+func (d Deps) ForLanguage(l *langs.Language) (*Deps, error) {
 	var err error
 
-	d.PathSpec, err = helpers.NewPathSpec(d.Fs, l)
+	d.PathSpec, err = helpers.NewPathSpecWithBaseBaseFsProvided(d.Fs, l, d.BaseFs)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +207,7 @@ type DepsCfg struct {
 	Fs *hugofs.Fs
 
 	// The language to use.
-	Language *helpers.Language
+	Language *langs.Language
 
 	// The configuration to use.
 	Cfg config.Provider

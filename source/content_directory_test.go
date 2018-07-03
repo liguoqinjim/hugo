@@ -17,11 +17,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/gohugoio/hugo/helpers"
+
 	"github.com/gohugoio/hugo/hugofs"
-	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIgnoreDotFilesAndDirectories(t *testing.T) {
+	assert := require.New(t)
 
 	tests := []struct {
 		path                string
@@ -35,7 +38,6 @@ func TestIgnoreDotFilesAndDirectories(t *testing.T) {
 		{"foobar/.barfoo.md", true, nil},
 		{".barfoo.md", true, nil},
 		{".md", true, nil},
-		{"", true, nil},
 		{"foobar/barfoo.md~", true, nil},
 		{".foobar/barfoo.md~", true, nil},
 		{"foobar~/barfoo.md", false, nil},
@@ -49,11 +51,13 @@ func TestIgnoreDotFilesAndDirectories(t *testing.T) {
 	}
 
 	for i, test := range tests {
-
-		v := viper.New()
+		v := newTestConfig()
 		v.Set("ignoreFiles", test.ignoreFilesRegexpes)
+		fs := hugofs.NewMem(v)
+		ps, err := helpers.NewPathSpec(fs, v)
+		assert.NoError(err)
 
-		s := NewSourceSpec(v, hugofs.NewMem(v))
+		s := NewSourceSpec(ps, fs.Source)
 
 		if ignored := s.IgnoreFile(filepath.FromSlash(test.path)); test.ignore != ignored {
 			t.Errorf("[%d] File not ignored", i)

@@ -19,8 +19,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gohugoio/hugo/deps"
 	"github.com/gohugoio/hugo/hugofs"
+
+	"github.com/gohugoio/hugo/deps"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
@@ -149,7 +150,7 @@ func TestCaseInsensitiveConfigurationVariations(t *testing.T) {
 
 	caseMixingTestsWriteCommonSources(t, mm)
 
-	cfg, err := LoadConfig(mm, "", "config.toml")
+	cfg, _, err := LoadConfig(ConfigSourceDescriptor{Fs: mm, Filename: "config.toml"})
 	require.NoError(t, err)
 
 	fs := hugofs.NewFrom(mm, cfg)
@@ -260,7 +261,7 @@ func doTestCaseInsensitiveConfigurationForTemplateEngine(t *testing.T, suffix st
 
 	caseMixingTestsWriteCommonSources(t, mm)
 
-	cfg, err := LoadConfig(mm, "", "config.toml")
+	cfg, err := LoadConfigDefault(mm)
 	require.NoError(t, err)
 
 	fs := hugofs.NewFrom(mm, cfg)

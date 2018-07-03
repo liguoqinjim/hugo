@@ -23,19 +23,33 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 )
 
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number of Hugo",
-	Long:  `All software has versions. This is Hugo's.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		printHugoVersion()
-		return nil
-	},
+var _ cmder = (*versionCmd)(nil)
+
+type versionCmd struct {
+	*baseCmd
+}
+
+func newVersionCmd() *versionCmd {
+	return &versionCmd{
+		newBaseCmd(&cobra.Command{
+			Use:   "version",
+			Short: "Print the version number of Hugo",
+			Long:  `All software has versions. This is Hugo's.`,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				printHugoVersion()
+				return nil
+			},
+		}),
+	}
 }
 
 func printHugoVersion() {
 	if hugolib.CommitHash == "" {
-		jww.FEEDBACK.Printf("Hugo Static Site Generator v%s %s/%s BuildDate: %s\n", helpers.CurrentHugoVersion, runtime.GOOS, runtime.GOARCH, hugolib.BuildDate)
+		if hugolib.BuildDate == "" {
+			jww.FEEDBACK.Printf("Hugo Static Site Generator v%s %s/%s\n", helpers.CurrentHugoVersion, runtime.GOOS, runtime.GOARCH)
+		} else {
+			jww.FEEDBACK.Printf("Hugo Static Site Generator v%s %s/%s BuildDate: %s\n", helpers.CurrentHugoVersion, runtime.GOOS, runtime.GOARCH, hugolib.BuildDate)
+		}
 	} else {
 		jww.FEEDBACK.Printf("Hugo Static Site Generator v%s-%s %s/%s BuildDate: %s\n", helpers.CurrentHugoVersion, strings.ToUpper(hugolib.CommitHash), runtime.GOOS, runtime.GOARCH, hugolib.BuildDate)
 	}

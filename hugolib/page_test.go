@@ -1,4 +1,4 @@
-// Copyright 2015 The Hugo Authors. All rights reserved.
+// Copyright 2018 The Hugo Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -25,10 +26,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gohugoio/hugo/hugofs"
+	"github.com/spf13/afero"
+
+	"github.com/spf13/viper"
+
 	"github.com/gohugoio/hugo/deps"
 	"github.com/gohugoio/hugo/helpers"
-	"github.com/gohugoio/hugo/hugofs"
-	"github.com/gohugoio/hugo/source"
 	"github.com/spf13/cast"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -444,7 +448,7 @@ func checkError(t *testing.T, err error, expected string) {
 	if err == nil {
 		t.Fatalf("err is nil.  Expected: %s", expected)
 	}
-	if err.Error() != expected {
+	if !strings.Contains(err.Error(), expected) {
 		t.Errorf("err.Error() returned: '%s'.  Expected: '%s'", err.Error(), expected)
 	}
 }
@@ -477,7 +481,7 @@ func checkPageTitle(t *testing.T, page *Page, title string) {
 
 func checkPageContent(t *testing.T, page *Page, content string, msg ...interface{}) {
 	a := normalizeContent(content)
-	b := normalizeContent(string(page.Content))
+	b := normalizeContent(string(page.content()))
 	if a != b {
 		t.Fatalf("Page content is:\n%q\nExpected:\n%q (%q)", b, a, msg)
 	}
@@ -501,7 +505,7 @@ func checkPageTOC(t *testing.T, page *Page, toc string) {
 }
 
 func checkPageSummary(t *testing.T, page *Page, summary string, msg ...interface{}) {
-	a := normalizeContent(string(page.Summary))
+	a := normalizeContent(string(page.summary))
 	b := normalizeContent(summary)
 	if a != b {
 		t.Fatalf("Page summary is:\n%q.\nExpected\n%q (%q)", a, b, msg)
@@ -521,10 +525,10 @@ func checkPageDate(t *testing.T, page *Page, time time.Time) {
 }
 
 func checkTruncation(t *testing.T, page *Page, shouldBe bool, msg string) {
-	if page.Summary == "" {
+	if page.Summary() == "" {
 		t.Fatal("page has no summary, can not check truncation")
 	}
-	if page.Truncated != shouldBe {
+	if page.truncated != shouldBe {
 		if shouldBe {
 			t.Fatalf("page wasn't truncated: %s", msg)
 		} else {
@@ -612,7 +616,7 @@ func testAllMarkdownEnginesForPages(t *testing.T,
 		require.NoError(t, err)
 		require.NotNil(t, home)
 		require.Equal(t, homePath, home.Path())
-		require.Contains(t, home.Content, "Home Page Content")
+		require.Contains(t, home.content(), "Home Page Content")
 
 	}
 
@@ -718,16 +722,17 @@ func TestPageWithDelimiterForMarkdownThatCrossesBorder(t *testing.T) {
 
 	p := s.RegularPages[0]
 
-	if p.Summary != template.HTML("<p>The <a href=\"http://gohugo.io/\">best static site generator</a>.<sup class=\"footnote-ref\" id=\"fnref:1\"><a rel=\"footnote\" href=\"#fn:1\">1</a></sup>\n</p>") {
-		t.Fatalf("Got summary:\n%q", p.Summary)
+	if p.Summary() != template.HTML("<p>The <a href=\"http://gohugo.io/\">best static site generator</a>.<sup class=\"footnote-ref\" id=\"fnref:1\"><a href=\"#fn:1\">1</a></sup>\n</p>") {
+		t.Fatalf("Got summary:\n%q", p.Summary())
 	}
 
-	if p.Content != template.HTML("<p>The <a href=\"http://gohugo.io/\">best static site generator</a>.<sup class=\"footnote-ref\" id=\"fnref:1\"><a rel=\"footnote\" href=\"#fn:1\">1</a></sup>\n</p>\n<div class=\"footnotes\">\n\n<hr />\n\n<ol>\n<li id=\"fn:1\">Many people say so.\n <a class=\"footnote-return\" href=\"#fnref:1\"><sup>[return]</sup></a></li>\n</ol>\n</div>") {
-		t.Fatalf("Got content:\n%q", p.Content)
+	if p.content() != template.HTML("<p>The <a href=\"http://gohugo.io/\">best static site generator</a>.<sup class=\"footnote-ref\" id=\"fnref:1\"><a href=\"#fn:1\">1</a></sup>\n</p>\n<div class=\"footnotes\">\n\n<hr />\n\n<ol>\n<li id=\"fn:1\">Many people say so.\n <a class=\"footnote-return\" href=\"#fnref:1\"><sup>[return]</sup></a></li>\n</ol>\n</div>") {
+		t.Fatalf("Got content:\n%q", p.content())
 	}
 }
 
 // Issue #3854
+// Also see https://github.com/gohugoio/hugo/issues/3977
 func TestPageWithDateFields(t *testing.T) {
 	assert := require.New(t)
 	pageWithDate := `---
@@ -737,8 +742,8 @@ weight: %d
 ---
 Simple Page With Some Date`
 
-	hasBothDates := func(p *Page) bool {
-		return p.Date.Year() == 2017 && p.PublishDate.Year() == 2017
+	hasDate := func(p *Page) bool {
+		return p.Date.Year() == 2017
 	}
 
 	datePage := func(field string, weight int) string {
@@ -749,7 +754,7 @@ Simple Page With Some Date`
 	assertFunc := func(t *testing.T, ext string, pages Pages) {
 		assert.True(len(pages) > 0)
 		for _, p := range pages {
-			assert.True(hasBothDates(p))
+			assert.True(hasDate(p))
 		}
 
 	}
@@ -789,7 +794,7 @@ func TestPageWithShortCodeInSummary(t *testing.T) {
 	assertFunc := func(t *testing.T, ext string, pages Pages) {
 		p := pages[0]
 		checkPageTitle(t, p, "Simple")
-		checkPageContent(t, p, normalizeExpected(ext, "<p>Summary Next Line. \n<figure >\n    \n        <img src=\"/not/real\" />\n    \n    \n</figure>\n.\nMore text here.</p>\n\n<p>Some more text</p>\n"))
+		checkPageContent(t, p, normalizeExpected(ext, "<p>Summary Next Line. \n<figure>\n    \n        <img src=\"/not/real\" />\n    \n    \n</figure>\n.\nMore text here.</p>\n\n<p>Some more text</p>\n"))
 		checkPageSummary(t, p, "Summary Next Line.  . More text here. Some more text")
 		checkPageType(t, p, "page")
 	}
@@ -871,8 +876,8 @@ func TestSummaryWithHTMLTagsOnNextLine(t *testing.T) {
 
 	assertFunc := func(t *testing.T, ext string, pages Pages) {
 		p := pages[0]
-		require.Contains(t, p.Summary, "Happy new year everyone!")
-		require.NotContains(t, p.Summary, "User interface")
+		require.Contains(t, p.Summary(), "Happy new year everyone!")
+		require.NotContains(t, p.Summary(), "User interface")
 	}
 
 	testAllMarkdownEnginesForPages(t, assertFunc, nil, `---
@@ -905,186 +910,96 @@ func TestPageWithDate(t *testing.T) {
 	checkPageDate(t, p, d)
 }
 
-const (
-	s = "fs mod timestamp" // signifies filesystem's modification timestamp
-	P = "1969-01-10T09:17:42Z"
-	D = "2013-10-15T06:16:13Z"
-	L = "2017-09-03T22:22:22Z"
-	M = "2018-01-24T12:21:39Z"
-	E = "2025-12-31T23:59:59Z"
-	o = "0001-01-01T00:00:00Z" // zero value of type Time, default for some date fields
-	x = ""                     // nil date value, default for some date fields
+func TestPageWithLastmodFromGitInfo(t *testing.T) {
+	assrt := require.New(t)
 
-	p_D____ = `---
-title: Simple
-date: '2013-10-15T06:16:13'
----
-Page With Date only`
+	// We need to use the OS fs for this.
+	cfg := viper.New()
+	fs := hugofs.NewFrom(hugofs.Os, cfg)
+	fs.Destination = &afero.MemMapFs{}
 
-	p__P___ = `---
-title: Simple
-publishdate: '1969-01-10T09:17:42'
----
-Page With PublishDate only`
+	cfg.Set("frontmatter", map[string]interface{}{
+		"lastmod": []string{":git", "lastmod"},
+	})
 
-	p_DP___ = `---
-title: Simple
-date: '2013-10-15T06:16:13'
-publishdate: '1969-01-10T09:17:42'
----
-Page With Date and PublishDate`
+	cfg.Set("enableGitInfo", true)
 
-	p__PL__ = `---
-title: Simple
-publishdate: '1969-01-10T09:17:42'
-lastmod: '2017-09-03T22:22:22'
----
-Page With Date and PublishDate`
+	assrt.NoError(loadDefaultSettingsFor(cfg))
 
-	p_DPL__ = `---
-title: Simple
-date: '2013-10-15T06:16:13'
-publishdate: '1969-01-10T09:17:42'
-lastmod: '2017-09-03T22:22:22'
----
-Page With Date, PublishDate and LastMod`
+	wd, err := os.Getwd()
+	assrt.NoError(err)
+	cfg.Set("workingDir", filepath.Join(wd, "testsite"))
 
-	p_DPL_E = `---
-title: Simple
-date: '2013-10-15T06:16:13'
-publishdate: '1969-01-10T09:17:42'
-lastmod: '2017-09-03T22:22:22'
-expirydate: '2025-12-31T23:59:59'
----
-Page With Date, PublishDate and LastMod`
+	s := buildSingleSite(t, deps.DepsCfg{Fs: fs, Cfg: cfg}, BuildCfg{SkipRender: true})
 
-	p_DP_ME = `---
-title: Simple
-date: '2013-10-15T06:16:13'
-publishdate: '1969-01-10T09:17:42'
-modified: '2018-01-24T12:21:39'
-expirydate: '2025-12-31T23:59:59'
----
-Page With Date, PublishDate and LastMod`
+	assrt.Len(s.RegularPages, 1)
 
-	p_DPLME = `---
-title: Simple
-date: '2013-10-15T06:16:13'
-publishdate: '1969-01-10T09:17:42'
-lastmod: '2017-09-03T22:22:22'
-modified: '2018-01-24T12:21:39'
-expirydate: '2025-12-31T23:59:59'
----
-Page With Date, PublishDate and LastMod`
+	// 2018-03-11 is the Git author date for testsite/content/first-post.md
+	assrt.Equal("2018-03-11", s.RegularPages[0].Lastmod.Format("2006-01-02"))
+}
 
-	emptyFM = `---
-
----
-Page With empty front matter`
-
-	zero_FM = "Page With empty front matter"
-)
-
-func TestMetadataDates(t *testing.T) {
+func TestPageWithFrontMatterConfig(t *testing.T) {
 	t.Parallel()
-	var tests = []struct {
-		text        string
-		filename    string
-		modFallback bool
-		expDate     string
-		expPub      string
-		expLast     string
-		expMod      string
-		expExp      string
-	}{
-		// The three columns on the left are the test case inputs:
-		//   page content: The name indicates which dates are set in the front matter,
-		//                 (D)ate, (P)ublishDate, (L)astModified
-		//                 (M)odified, (E)xpiryDate. So, for example,
-		//                 p__PL__ is content with PublishDate and LastModified
-		//                 specified in the front matter.
-		//   file path:    For when we start deriving metadata from it
-		//   modFallback:  Whether or not useModTimeAsFallback is enabled.
-		//
-		// The single character columns on the right are the expected outputs
-		// for each metadata date given by the column heading.
-		// Since each date type (D/P/L/M/E) in the input is always set
-		// to the same value (the constants referenced in these columns), it
-		// is easy to visualize and test which input date gets copied to which
-		// output date fields. "s" signifies the file's filesystem time stamp,
-		// "x" signifies a nil value, and "o" the "zero date".
-		//
-		// ------- inputs --------|--- outputs ---|
-		//content  filename  modfb? D  P  L  M  E
-		{p_D____, "test.md", false, D, D, D, x, x}, // date copied across
-		{p_D____, "testy.md", true, D, D, D, x, x},
-		{p__P___, "test.md", false, P, P, P, x, x}, // pubdate copied across
-		{p__P___, "testy.md", true, P, P, P, x, x},
-		{p_DP___, "test.md", false, D, P, D, x, x}, // date -> lastMod
-		{p_DP___, "testy.md", true, D, P, D, x, x},
-		{p__PL__, "test.md", false, P, P, L, x, x}, // pub -> date overrides lastMod -> date code (inconsistent?)
-		{p__PL__, "testy.md", true, P, P, L, x, x},
-		{p_DPL__, "test.md", false, D, P, L, x, x}, // three dates
-		{p_DPL__, "testy.md", true, D, P, L, x, x},
-		{p_DPL_E, "testy.md", true, D, P, L, x, E}, // lastMod NOT copied to mod (inconsistent?)
-		{p_DP_ME, "testy.md", true, D, P, M, M, E}, // mod copied to lastMod
-		{p_DPLME, "testy.md", true, D, P, L, M, E}, // all dates
 
-		{emptyFM, "test.md", false, o, o, o, x, x}, // 3 year-one dates, 2 empty dates
-		{zero_FM, "test.md", false, o, o, o, x, x},
-		{emptyFM, "testy.md", true, s, o, s, x, x}, // 2 filesys, 1 year-one, 2 empty
-		{zero_FM, "testy.md", true, s, o, s, x, x},
+	for _, dateHandler := range []string{":filename", ":fileModTime"} {
+		t.Run(fmt.Sprintf("dateHandler=%q", dateHandler), func(t *testing.T) {
+			assrt := require.New(t)
+			cfg, fs := newTestCfg()
+
+			pageTemplate := `
+---
+title: Page
+weight: %d
+lastMod: 2018-02-28
+%s
+---
+Content
+`
+
+			cfg.Set("frontmatter", map[string]interface{}{
+				"date": []string{dateHandler, "date"},
+			})
+
+			c1 := filepath.Join("content", "section", "2012-02-21-noslug.md")
+			c2 := filepath.Join("content", "section", "2012-02-22-slug.md")
+
+			writeSource(t, fs, c1, fmt.Sprintf(pageTemplate, 1, ""))
+			writeSource(t, fs, c2, fmt.Sprintf(pageTemplate, 2, "slug: aslug"))
+
+			c1fi, err := fs.Source.Stat(c1)
+			assrt.NoError(err)
+			c2fi, err := fs.Source.Stat(c2)
+			assrt.NoError(err)
+
+			s := buildSingleSite(t, deps.DepsCfg{Fs: fs, Cfg: cfg}, BuildCfg{SkipRender: true})
+
+			assrt.Len(s.RegularPages, 2)
+
+			noSlug := s.RegularPages[0]
+			slug := s.RegularPages[1]
+
+			assrt.Equal(28, noSlug.Lastmod.Day())
+
+			switch strings.ToLower(dateHandler) {
+			case ":filename":
+				assrt.False(noSlug.Date.IsZero())
+				assrt.False(slug.Date.IsZero())
+				assrt.Equal(2012, noSlug.Date.Year())
+				assrt.Equal(2012, slug.Date.Year())
+				assrt.Equal("noslug", noSlug.Slug)
+				assrt.Equal("aslug", slug.Slug)
+			case ":filemodtime":
+				assrt.Equal(c1fi.ModTime().Year(), noSlug.Date.Year())
+				assrt.Equal(c2fi.ModTime().Year(), slug.Date.Year())
+				fallthrough
+			default:
+				assrt.Equal("", noSlug.Slug)
+				assrt.Equal("aslug", slug.Slug)
+
+			}
+		})
 	}
 
-	for i, test := range tests {
-		s := newTestSite(t)
-		s.Cfg.Set("useModTimeAsFallback", test.modFallback)
-		fs := hugofs.NewMem(s.Cfg)
-
-		writeToFs(t, fs.Source, test.filename, test.text)
-		file, err := fs.Source.Open(test.filename)
-		if err != nil {
-			t.Fatal("failed to write test file to test filesystem")
-		}
-		fi, _ := fs.Source.Stat(test.filename)
-
-		sp := source.NewSourceSpec(s.Cfg, fs)
-		p := s.newPageFromFile(newFileInfo(sp, "", test.filename, fi, bundleNot))
-		p.ReadFrom(file)
-
-		// check Page Variables
-		checkDate(t, i+1, "Date", p.Date, test.expDate, fi)
-		checkDate(t, i+1, "PubDate", p.PublishDate, test.expPub, fi)
-		checkDate(t, i+1, "LastMod", p.Lastmod, test.expLast, fi)
-		checkDate(t, i+1, "LastMod", p.ExpiryDate, test.expExp, fi)
-
-		// check Page Params
-		checkDate(t, i+1, "param date", cast.ToTime(p.params["date"]), test.expDate, fi)
-		checkDate(t, i+1, "param publishdate", cast.ToTime(p.params["publishdate"]), test.expPub, fi)
-		checkDate(t, i+1, "param modified", cast.ToTime(p.params["modified"]), test.expMod, fi)
-		checkDate(t, i+1, "param expirydate", cast.ToTime(p.params["expirydate"]), test.expExp, fi)
-	}
-}
-
-func checkDate(t *testing.T, testId int, dateType string, given time.Time, expected string, fi os.FileInfo) {
-	var expectedTime time.Time
-	if expected == s {
-		expectedTime = fi.ModTime()
-	} else if expected != x {
-		expectedTime = parseTime(expected, t)
-	}
-
-	if given != expectedTime {
-		t.Errorf("test %d, %s is: %s. Expected: %s", testId, dateType, given, expectedTime)
-	}
-}
-
-func parseTime(s string, t *testing.T) time.Time {
-	time, err := time.Parse(time.RFC3339, s)
-	if err != nil {
-		t.Fatalf("bad test data: failed to parse date: '%s'", s)
-	}
-	return time
 }
 
 func TestWordCountWithAllCJKRunesWithoutHasCJKLanguage(t *testing.T) {
@@ -1122,9 +1037,9 @@ func TestWordCountWithMainEnglishWithCJKRunes(t *testing.T) {
 			t.Fatalf("[%s] incorrect word count for content '%s'. expected %v, got %v", ext, p.plain, 74, p.WordCount())
 		}
 
-		if p.Summary != simplePageWithMainEnglishWithCJKRunesSummary {
+		if p.summary != simplePageWithMainEnglishWithCJKRunesSummary {
 			t.Fatalf("[%s] incorrect Summary for content '%s'. expected %v, got %v", ext, p.plain,
-				simplePageWithMainEnglishWithCJKRunesSummary, p.Summary)
+				simplePageWithMainEnglishWithCJKRunesSummary, p.summary)
 		}
 	}
 
@@ -1143,9 +1058,9 @@ func TestWordCountWithIsCJKLanguageFalse(t *testing.T) {
 			t.Fatalf("[%s] incorrect word count for content '%s'. expected %v, got %v", ext, p.plain, 74, p.WordCount())
 		}
 
-		if p.Summary != simplePageWithIsCJKLanguageFalseSummary {
+		if p.summary != simplePageWithIsCJKLanguageFalseSummary {
 			t.Fatalf("[%s] incorrect Summary for content '%s'. expected %v, got %v", ext, p.plain,
-				simplePageWithIsCJKLanguageFalseSummary, p.Summary)
+				simplePageWithIsCJKLanguageFalseSummary, p.summary)
 		}
 	}
 
@@ -1190,60 +1105,6 @@ func TestCreatePage(t *testing.T) {
 		p, _ := s.NewPage("page")
 		if _, err := p.ReadFrom(strings.NewReader(test.r)); err != nil {
 			t.Fatalf("[%d] Unable to parse page: %s", i, err)
-		}
-	}
-}
-
-func TestPageKind(t *testing.T) {
-	t.Parallel()
-	const sep = helpers.FilePathSeparator
-	var tests = []struct {
-		file string
-		kind string
-	}{
-		{"_index.md", KindHome},
-		{"about.md", KindPage},
-		{"sectionA" + sep + "_index.md", KindSection},
-		{"sectionA" + sep + "about.md", KindPage},
-		{"categories" + sep + "_index.md", KindTaxonomyTerm},
-		{"categories" + sep + "categoryA" + sep + "_index.md", KindTaxonomy},
-		{"tags" + sep + "_index.md", KindTaxonomyTerm},
-		{"tags" + sep + "tagA" + sep + "_index.md", KindTaxonomy},
-
-		// nn is configured as a language
-		{"_index.nn.md", KindHome},
-		{"about.nn.md", KindPage},
-		{"sectionA" + sep + "_index.nn.md", KindSection},
-		{"sectionA" + sep + "about.nn.md", KindPage},
-
-		// should NOT be categorized as KindHome
-		{"_indexNOT.md", KindPage},
-
-		// To be consistent with FileInfo.TranslationBaseName(),
-		// language codes not explicitly configured for the site
-		// are not treated as such. "fr" is not configured as
-		// a language in the test site, so ALL of the
-		// following should be KindPage
-		{"_index.fr.md", KindPage}, //not KindHome
-		{"about.fr.md", KindPage},
-		{"sectionA" + sep + "_index.fr.md", KindPage}, // KindSection
-		{"sectionA" + sep + "about.fr.md", KindPage},
-	}
-
-	for _, test := range tests {
-		s := newTestSite(t, "languages.nn.languageName", "Nynorsk")
-		taxonomies := make(map[string]string)
-		taxonomies["tag"] = "tags"
-		taxonomies["category"] = "categories"
-		s.Taxonomies = make(TaxonomyList)
-		for _, plural := range taxonomies {
-			s.Taxonomies[plural] = make(Taxonomy)
-		}
-
-		p, _ := s.NewPage(test.file)
-		p.setValuesForKind(s)
-		if p.Kind != test.kind {
-			t.Errorf("for %s expected p.Kind == %s, got %s", test.file, test.kind, p.Kind)
 		}
 	}
 }
@@ -1650,7 +1511,8 @@ func TestPageSimpleMethods(t *testing.T) {
 	} {
 
 		p, _ := s.NewPage("Test")
-		p.Content = "<h1>Do Be Do Be Do</h1>"
+		p.workContent = []byte("<h1>Do Be Do Be Do</h1>")
+		p.resetContent()
 		if !this.assertFunc(p) {
 			t.Errorf("[%d] Page method error", i)
 		}
@@ -1871,6 +1733,101 @@ tags:
 			})
 		}
 	}
+}
+
+// https://github.com/gohugoio/hugo/issues/4675
+func TestWordCountAndSimilarVsSummary(t *testing.T) {
+
+	t.Parallel()
+	assert := require.New(t)
+
+	single := []string{"_default/single.html", `
+WordCount: {{ .WordCount }}
+FuzzyWordCount: {{ .FuzzyWordCount }}
+ReadingTime: {{ .ReadingTime }}
+Len Plain: {{ len .Plain }}
+Len PlainWords: {{ len .PlainWords }}
+Truncated: {{ .Truncated }}
+Len Summary: {{ len .Summary }}
+Len Content: {{ len .Content }}
+`}
+
+	b := newTestSitesBuilder(t)
+	b.WithSimpleConfigFile().WithTemplatesAdded(single...).WithContent("p1.md", fmt.Sprintf(`---
+title: p1	
+---
+
+%s
+
+`, strings.Repeat("word ", 510)),
+
+		"p2.md", fmt.Sprintf(`---
+title: p2
+---
+This is a summary.
+
+<!--more-->
+
+%s
+
+`, strings.Repeat("word ", 310)),
+		"p3.md", fmt.Sprintf(`---
+title: p3
+isCJKLanguage: true
+---
+Summary: In Chinese, 好 means good.
+
+<!--more-->
+
+%s
+
+`, strings.Repeat("好", 200)),
+		"p4.md", fmt.Sprintf(`---
+title: p4
+isCJKLanguage: false
+---
+Summary: In Chinese, 好 means good.
+
+<!--more-->
+
+%s
+
+`, strings.Repeat("好", 200)),
+
+		"p5.md", fmt.Sprintf(`---
+title: p4
+isCJKLanguage: true
+---
+Summary: In Chinese, 好 means good.
+
+%s
+
+`, strings.Repeat("好", 200)),
+		"p6.md", fmt.Sprintf(`---
+title: p4
+isCJKLanguage: false
+---
+Summary: In Chinese, 好 means good.
+
+%s
+
+`, strings.Repeat("好", 200)),
+	)
+
+	b.CreateSites().Build(BuildCfg{})
+
+	assert.Equal(1, len(b.H.Sites))
+	require.Len(t, b.H.Sites[0].RegularPages, 6)
+
+	b.AssertFileContent("public/p1/index.html", "WordCount: 510\nFuzzyWordCount: 600\nReadingTime: 3\nLen Plain: 2550\nLen PlainWords: 510\nTruncated: false\nLen Summary: 2549\nLen Content: 2557")
+
+	b.AssertFileContent("public/p2/index.html", "WordCount: 314\nFuzzyWordCount: 400\nReadingTime: 2\nLen Plain: 1570\nLen PlainWords: 314\nTruncated: true\nLen Summary: 34\nLen Content: 1592")
+
+	b.AssertFileContent("public/p3/index.html", "WordCount: 206\nFuzzyWordCount: 300\nReadingTime: 1\nLen Plain: 639\nLen PlainWords: 7\nTruncated: true\nLen Summary: 52\nLen Content: 661")
+	b.AssertFileContent("public/p4/index.html", "WordCount: 7\nFuzzyWordCount: 100\nReadingTime: 1\nLen Plain: 639\nLen PlainWords: 7\nTruncated: true\nLen Summary: 52\nLen Content: 661")
+	b.AssertFileContent("public/p5/index.html", "WordCount: 206\nFuzzyWordCount: 300\nReadingTime: 1\nLen Plain: 638\nLen PlainWords: 7\nTruncated: true\nLen Summary: 229\nLen Content: 653")
+	b.AssertFileContent("public/p6/index.html", "WordCount: 7\nFuzzyWordCount: 100\nReadingTime: 1\nLen Plain: 638\nLen PlainWords: 7\nTruncated: false\nLen Summary: 637\nLen Content: 653")
+
 }
 
 func BenchmarkParsePage(b *testing.B) {

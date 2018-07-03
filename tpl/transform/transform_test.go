@@ -22,6 +22,7 @@ import (
 	"github.com/gohugoio/hugo/deps"
 	"github.com/gohugoio/hugo/helpers"
 	"github.com/gohugoio/hugo/hugofs"
+	"github.com/gohugoio/hugo/langs"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,9 @@ type tstNoStringer struct{}
 func TestEmojify(t *testing.T) {
 	t.Parallel()
 
-	ns := New(newDeps(viper.New()))
+	v := viper.New()
+	v.Set("contentDir", "content")
+	ns := New(newDeps(v))
 
 	for i, test := range []struct {
 		s      interface{}
@@ -60,7 +63,9 @@ func TestEmojify(t *testing.T) {
 func TestHighlight(t *testing.T) {
 	t.Parallel()
 
-	ns := New(newDeps(viper.New()))
+	v := viper.New()
+	v.Set("contentDir", "content")
+	ns := New(newDeps(v))
 
 	for i, test := range []struct {
 		s      interface{}
@@ -90,7 +95,9 @@ func TestHighlight(t *testing.T) {
 func TestHTMLEscape(t *testing.T) {
 	t.Parallel()
 
-	ns := New(newDeps(viper.New()))
+	v := viper.New()
+	v.Set("contentDir", "content")
+	ns := New(newDeps(v))
 
 	for i, test := range []struct {
 		s      interface{}
@@ -118,7 +125,9 @@ func TestHTMLEscape(t *testing.T) {
 func TestHTMLUnescape(t *testing.T) {
 	t.Parallel()
 
-	ns := New(newDeps(viper.New()))
+	v := viper.New()
+	v.Set("contentDir", "content")
+	ns := New(newDeps(v))
 
 	for i, test := range []struct {
 		s      interface{}
@@ -146,7 +155,9 @@ func TestHTMLUnescape(t *testing.T) {
 func TestMarkdownify(t *testing.T) {
 	t.Parallel()
 
-	ns := New(newDeps(viper.New()))
+	v := viper.New()
+	v.Set("contentDir", "content")
+	ns := New(newDeps(v))
 
 	for i, test := range []struct {
 		s      interface{}
@@ -176,7 +187,9 @@ func TestMarkdownifyBlocksOfText(t *testing.T) {
 
 	assert := require.New(t)
 
-	ns := New(newDeps(viper.New()))
+	v := viper.New()
+	v.Set("contentDir", "content")
+	ns := New(newDeps(v))
 
 	text := `
 #First 
@@ -201,7 +214,9 @@ And then some.
 func TestPlainify(t *testing.T) {
 	t.Parallel()
 
-	ns := New(newDeps(viper.New()))
+	v := viper.New()
+	v.Set("contentDir", "content")
+	ns := New(newDeps(v))
 
 	for i, test := range []struct {
 		s      interface{}
@@ -226,7 +241,7 @@ func TestPlainify(t *testing.T) {
 }
 
 func newDeps(cfg config.Provider) *deps.Deps {
-	l := helpers.NewLanguage("en", cfg)
+	l := langs.NewLanguage("en", cfg)
 	l.Set("i18nDir", "i18n")
 	cs, err := helpers.NewContentSpec(l)
 	if err != nil {

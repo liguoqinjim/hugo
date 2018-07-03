@@ -1,4 +1,1233 @@
 {
+  "chroma": {
+    "lexers": [
+      {
+        "Name": "ABNF",
+        "Aliases": [
+          "abnf"
+        ]
+      },
+      {
+        "Name": "ANTLR",
+        "Aliases": [
+          "antlr"
+        ]
+      },
+      {
+        "Name": "APL",
+        "Aliases": [
+          "apl"
+        ]
+      },
+      {
+        "Name": "ActionScript",
+        "Aliases": [
+          "actionscript",
+          "as"
+        ]
+      },
+      {
+        "Name": "ActionScript 3",
+        "Aliases": [
+          "actionscript3",
+          "as",
+          "as3"
+        ]
+      },
+      {
+        "Name": "Ada",
+        "Aliases": [
+          "ada",
+          "ada2005",
+          "ada95",
+          "adb",
+          "ads"
+        ]
+      },
+      {
+        "Name": "Angular2",
+        "Aliases": [
+          "ng2"
+        ]
+      },
+      {
+        "Name": "ApacheConf",
+        "Aliases": [
+          "aconf",
+          "apache",
+          "apacheconf",
+          "conf",
+          "htaccess"
+        ]
+      },
+      {
+        "Name": "AppleScript",
+        "Aliases": [
+          "applescript"
+        ]
+      },
+      {
+        "Name": "Awk",
+        "Aliases": [
+          "awk",
+          "gawk",
+          "mawk",
+          "nawk"
+        ]
+      },
+      {
+        "Name": "BNF",
+        "Aliases": [
+          "bnf"
+        ]
+      },
+      {
+        "Name": "Base Makefile",
+        "Aliases": [
+          "*",
+          "bsdmake",
+          "mak",
+          "make",
+          "makefile",
+          "mf",
+          "mk"
+        ]
+      },
+      {
+        "Name": "Bash",
+        "Aliases": [
+          "bash",
+          "bash_*",
+          "bashrc",
+          "ebuild",
+          "eclass",
+          "exheres-0",
+          "exlib",
+          "ksh",
+          "sh",
+          "shell",
+          "zsh",
+          "zshrc"
+        ]
+      },
+      {
+        "Name": "Batchfile",
+        "Aliases": [
+          "bat",
+          "batch",
+          "cmd",
+          "dosbatch",
+          "winbatch"
+        ]
+      },
+      {
+        "Name": "BlitzBasic",
+        "Aliases": [
+          "b3d",
+          "bb",
+          "blitzbasic",
+          "bplus",
+          "decls"
+        ]
+      },
+      {
+        "Name": "Brainfuck",
+        "Aliases": [
+          "b",
+          "bf",
+          "brainfuck"
+        ]
+      },
+      {
+        "Name": "C",
+        "Aliases": [
+          "c",
+          "h",
+          "idc"
+        ]
+      },
+      {
+        "Name": "C#",
+        "Aliases": [
+          "c#",
+          "cs",
+          "csharp"
+        ]
+      },
+      {
+        "Name": "C++",
+        "Aliases": [
+          "C",
+          "CPP",
+          "H",
+          "c++",
+          "cc",
+          "cp",
+          "cpp",
+          "cxx",
+          "h++",
+          "hh",
+          "hpp",
+          "hxx"
+        ]
+      },
+      {
+        "Name": "CFEngine3",
+        "Aliases": [
+          "cf",
+          "cf3",
+          "cfengine3"
+        ]
+      },
+      {
+        "Name": "CMake",
+        "Aliases": [
+          "cmake",
+          "txt"
+        ]
+      },
+      {
+        "Name": "COBOL",
+        "Aliases": [
+          "COB",
+          "CPY",
+          "cob",
+          "cobol",
+          "cpy"
+        ]
+      },
+      {
+        "Name": "CSS",
+        "Aliases": [
+          "css"
+        ]
+      },
+      {
+        "Name": "Cap'n Proto",
+        "Aliases": [
+          "capnp"
+        ]
+      },
+      {
+        "Name": "Ceylon",
+        "Aliases": [
+          "ceylon"
+        ]
+      },
+      {
+        "Name": "ChaiScript",
+        "Aliases": [
+          "chai",
+          "chaiscript"
+        ]
+      },
+      {
+        "Name": "Cheetah",
+        "Aliases": [
+          "cheetah",
+          "spitfire",
+          "spt",
+          "tmpl"
+        ]
+      },
+      {
+        "Name": "Clojure",
+        "Aliases": [
+          "clj",
+          "clojure"
+        ]
+      },
+      {
+        "Name": "CoffeeScript",
+        "Aliases": [
+          "coffee",
+          "coffee-script",
+          "coffeescript"
+        ]
+      },
+      {
+        "Name": "Common Lisp",
+        "Aliases": [
+          "cl",
+          "common-lisp",
+          "lisp"
+        ]
+      },
+      {
+        "Name": "Coq",
+        "Aliases": [
+          "coq",
+          "v"
+        ]
+      },
+      {
+        "Name": "Crystal",
+        "Aliases": [
+          "cr",
+          "crystal"
+        ]
+      },
+      {
+        "Name": "Cython",
+        "Aliases": [
+          "cython",
+          "pxd",
+          "pxi",
+          "pyrex",
+          "pyx"
+        ]
+      },
+      {
+        "Name": "DTD",
+        "Aliases": [
+          "dtd"
+        ]
+      },
+      {
+        "Name": "Dart",
+        "Aliases": [
+          "dart"
+        ]
+      },
+      {
+        "Name": "Diff",
+        "Aliases": [
+          "diff",
+          "patch",
+          "udiff"
+        ]
+      },
+      {
+        "Name": "Django/Jinja",
+        "Aliases": [
+          "django",
+          "jinja"
+        ]
+      },
+      {
+        "Name": "Docker",
+        "Aliases": [
+          "docker",
+          "dockerfile"
+        ]
+      },
+      {
+        "Name": "EBNF",
+        "Aliases": [
+          "ebnf"
+        ]
+      },
+      {
+        "Name": "Elixir",
+        "Aliases": [
+          "elixir",
+          "ex",
+          "exs"
+        ]
+      },
+      {
+        "Name": "Elm",
+        "Aliases": [
+          "elm"
+        ]
+      },
+      {
+        "Name": "EmacsLisp",
+        "Aliases": [
+          "el",
+          "elisp",
+          "emacs",
+          "emacs-lisp"
+        ]
+      },
+      {
+        "Name": "Erlang",
+        "Aliases": [
+          "erl",
+          "erlang",
+          "es",
+          "escript",
+          "hrl"
+        ]
+      },
+      {
+        "Name": "FSharp",
+        "Aliases": [
+          "fs",
+          "fsharp",
+          "fsi"
+        ]
+      },
+      {
+        "Name": "Factor",
+        "Aliases": [
+          "factor"
+        ]
+      },
+      {
+        "Name": "Fish",
+        "Aliases": [
+          "fish",
+          "fishshell",
+          "load"
+        ]
+      },
+      {
+        "Name": "Forth",
+        "Aliases": [
+          "forth",
+          "frt",
+          "fs"
+        ]
+      },
+      {
+        "Name": "Fortran",
+        "Aliases": [
+          "F03",
+          "F90",
+          "f03",
+          "f90",
+          "fortran"
+        ]
+      },
+      {
+        "Name": "GAS",
+        "Aliases": [
+          "S",
+          "asm",
+          "gas",
+          "s"
+        ]
+      },
+      {
+        "Name": "GDScript",
+        "Aliases": [
+          "gd",
+          "gdscript"
+        ]
+      },
+      {
+        "Name": "GLSL",
+        "Aliases": [
+          "frag",
+          "geo",
+          "glsl",
+          "vert"
+        ]
+      },
+      {
+        "Name": "Genshi",
+        "Aliases": [
+          "genshi",
+          "kid",
+          "xml+genshi",
+          "xml+kid"
+        ]
+      },
+      {
+        "Name": "Genshi HTML",
+        "Aliases": [
+          "html+genshi",
+          "html+kid"
+        ]
+      },
+      {
+        "Name": "Genshi Text",
+        "Aliases": [
+          "genshitext"
+        ]
+      },
+      {
+        "Name": "Gnuplot",
+        "Aliases": [
+          "gnuplot",
+          "plot",
+          "plt"
+        ]
+      },
+      {
+        "Name": "Go",
+        "Aliases": [
+          "go",
+          "golang"
+        ]
+      },
+      {
+        "Name": "Go HTML Template",
+        "Aliases": [
+          "go-html-template"
+        ]
+      },
+      {
+        "Name": "Go Text Template",
+        "Aliases": [
+          "go-text-template"
+        ]
+      },
+      {
+        "Name": "Groovy",
+        "Aliases": [
+          "gradle",
+          "groovy"
+        ]
+      },
+      {
+        "Name": "HTML",
+        "Aliases": [
+          "htm",
+          "html",
+          "xhtml",
+          "xslt"
+        ]
+      },
+      {
+        "Name": "HTTP",
+        "Aliases": [
+          "http"
+        ]
+      },
+      {
+        "Name": "Handlebars",
+        "Aliases": [
+          "handlebars"
+        ]
+      },
+      {
+        "Name": "Haskell",
+        "Aliases": [
+          "haskell",
+          "hs"
+        ]
+      },
+      {
+        "Name": "Haxe",
+        "Aliases": [
+          "haxe",
+          "hx",
+          "hxsl"
+        ]
+      },
+      {
+        "Name": "Hexdump",
+        "Aliases": [
+          "hexdump"
+        ]
+      },
+      {
+        "Name": "Hy",
+        "Aliases": [
+          "hy",
+          "hylang"
+        ]
+      },
+      {
+        "Name": "INI",
+        "Aliases": [
+          "cfg",
+          "dosini",
+          "inf",
+          "ini"
+        ]
+      },
+      {
+        "Name": "Idris",
+        "Aliases": [
+          "idr",
+          "idris"
+        ]
+      },
+      {
+        "Name": "Io",
+        "Aliases": [
+          "io"
+        ]
+      },
+      {
+        "Name": "JSON",
+        "Aliases": [
+          "json"
+        ]
+      },
+      {
+        "Name": "JSX",
+        "Aliases": [
+          "jsx",
+          "react"
+        ]
+      },
+      {
+        "Name": "Java",
+        "Aliases": [
+          "java"
+        ]
+      },
+      {
+        "Name": "JavaScript",
+        "Aliases": [
+          "javascript",
+          "js",
+          "jsm"
+        ]
+      },
+      {
+        "Name": "Julia",
+        "Aliases": [
+          "jl",
+          "julia"
+        ]
+      },
+      {
+        "Name": "Kotlin",
+        "Aliases": [
+          "kotlin",
+          "kt"
+        ]
+      },
+      {
+        "Name": "LLVM",
+        "Aliases": [
+          "ll",
+          "llvm"
+        ]
+      },
+      {
+        "Name": "Lighttpd configuration file",
+        "Aliases": [
+          "lighttpd",
+          "lighty"
+        ]
+      },
+      {
+        "Name": "Lua",
+        "Aliases": [
+          "lua",
+          "wlua"
+        ]
+      },
+      {
+        "Name": "Mako",
+        "Aliases": [
+          "mako",
+          "mao"
+        ]
+      },
+      {
+        "Name": "Mason",
+        "Aliases": [
+          "m",
+          "mason",
+          "mc",
+          "mhtml",
+          "mi"
+        ]
+      },
+      {
+        "Name": "Mathematica",
+        "Aliases": [
+          "cdf",
+          "ma",
+          "mathematica",
+          "mma",
+          "nb",
+          "nbp"
+        ]
+      },
+      {
+        "Name": "MiniZinc",
+        "Aliases": [
+          "MZN",
+          "dzn",
+          "fzn",
+          "minizinc",
+          "mzn"
+        ]
+      },
+      {
+        "Name": "Modula-2",
+        "Aliases": [
+          "def",
+          "m2",
+          "mod",
+          "modula2"
+        ]
+      },
+      {
+        "Name": "MorrowindScript",
+        "Aliases": [
+          "morrowind",
+          "mwscript"
+        ]
+      },
+      {
+        "Name": "MySQL",
+        "Aliases": [
+          "mysql",
+          "sql"
+        ]
+      },
+      {
+        "Name": "Myghty",
+        "Aliases": [
+          "myghty",
+          "myt"
+        ]
+      },
+      {
+        "Name": "NASM",
+        "Aliases": [
+          "ASM",
+          "asm",
+          "nasm"
+        ]
+      },
+      {
+        "Name": "Newspeak",
+        "Aliases": [
+          "newspeak",
+          "ns2"
+        ]
+      },
+      {
+        "Name": "Nginx configuration file",
+        "Aliases": [
+          "conf",
+          "nginx"
+        ]
+      },
+      {
+        "Name": "Nim",
+        "Aliases": [
+          "nim",
+          "nimrod"
+        ]
+      },
+      {
+        "Name": "Nix",
+        "Aliases": [
+          "nix",
+          "nixos"
+        ]
+      },
+      {
+        "Name": "OCaml",
+        "Aliases": [
+          "ml",
+          "mli",
+          "mll",
+          "mly",
+          "ocaml"
+        ]
+      },
+      {
+        "Name": "Objective-C",
+        "Aliases": [
+          "h",
+          "m",
+          "obj-c",
+          "objc",
+          "objective-c",
+          "objectivec"
+        ]
+      },
+      {
+        "Name": "Octave",
+        "Aliases": [
+          "m",
+          "octave"
+        ]
+      },
+      {
+        "Name": "PHP",
+        "Aliases": [
+          "inc",
+          "php",
+          "php3",
+          "php4",
+          "php5",
+          "php[345]"
+        ]
+      },
+      {
+        "Name": "PL/pgSQL",
+        "Aliases": [
+          "plpgsql"
+        ]
+      },
+      {
+        "Name": "POVRay",
+        "Aliases": [
+          "inc",
+          "pov"
+        ]
+      },
+      {
+        "Name": "PacmanConf",
+        "Aliases": [
+          "conf",
+          "pacmanconf"
+        ]
+      },
+      {
+        "Name": "Perl",
+        "Aliases": [
+          "perl",
+          "pl",
+          "pm",
+          "t"
+        ]
+      },
+      {
+        "Name": "Pig",
+        "Aliases": [
+          "pig"
+        ]
+      },
+      {
+        "Name": "PkgConfig",
+        "Aliases": [
+          "pc",
+          "pkgconfig"
+        ]
+      },
+      {
+        "Name": "PostScript",
+        "Aliases": [
+          "eps",
+          "postscr",
+          "postscript",
+          "ps"
+        ]
+      },
+      {
+        "Name": "PostgreSQL SQL dialect",
+        "Aliases": [
+          "postgres",
+          "postgresql"
+        ]
+      },
+      {
+        "Name": "PowerShell",
+        "Aliases": [
+          "posh",
+          "powershell",
+          "ps1",
+          "psm1"
+        ]
+      },
+      {
+        "Name": "Prolog",
+        "Aliases": [
+          "ecl",
+          "pl",
+          "pro",
+          "prolog"
+        ]
+      },
+      {
+        "Name": "Protocol Buffer",
+        "Aliases": [
+          "proto",
+          "protobuf"
+        ]
+      },
+      {
+        "Name": "Puppet",
+        "Aliases": [
+          "pp",
+          "puppet"
+        ]
+      },
+      {
+        "Name": "Python",
+        "Aliases": [
+          "py",
+          "python",
+          "pyw",
+          "sage",
+          "sc",
+          "tac"
+        ]
+      },
+      {
+        "Name": "Python 3",
+        "Aliases": [
+          "py3",
+          "python3"
+        ]
+      },
+      {
+        "Name": "QBasic",
+        "Aliases": [
+          "BAS",
+          "bas",
+          "basic",
+          "qbasic"
+        ]
+      },
+      {
+        "Name": "R",
+        "Aliases": [
+          "R",
+          "Renviron",
+          "Rhistory",
+          "Rprofile",
+          "S",
+          "r",
+          "s",
+          "splus"
+        ]
+      },
+      {
+        "Name": "Racket",
+        "Aliases": [
+          "racket",
+          "rkt",
+          "rktd",
+          "rktl"
+        ]
+      },
+      {
+        "Name": "Ragel",
+        "Aliases": [
+          "ragel"
+        ]
+      },
+      {
+        "Name": "Rexx",
+        "Aliases": [
+          "arexx",
+          "rex",
+          "rexx",
+          "rx"
+        ]
+      },
+      {
+        "Name": "Ruby",
+        "Aliases": [
+          "duby",
+          "gemspec",
+          "rake",
+          "rb",
+          "rbw",
+          "rbx",
+          "ruby"
+        ]
+      },
+      {
+        "Name": "Rust",
+        "Aliases": [
+          "in",
+          "rs",
+          "rust"
+        ]
+      },
+      {
+        "Name": "SCSS",
+        "Aliases": [
+          "scss"
+        ]
+      },
+      {
+        "Name": "SPARQL",
+        "Aliases": [
+          "rq",
+          "sparql"
+        ]
+      },
+      {
+        "Name": "SQL",
+        "Aliases": [
+          "sql"
+        ]
+      },
+      {
+        "Name": "Sass",
+        "Aliases": [
+          "sass"
+        ]
+      },
+      {
+        "Name": "Scala",
+        "Aliases": [
+          "scala"
+        ]
+      },
+      {
+        "Name": "Scheme",
+        "Aliases": [
+          "scheme",
+          "scm",
+          "ss"
+        ]
+      },
+      {
+        "Name": "Scilab",
+        "Aliases": [
+          "sce",
+          "sci",
+          "scilab",
+          "tst"
+        ]
+      },
+      {
+        "Name": "Smalltalk",
+        "Aliases": [
+          "smalltalk",
+          "squeak",
+          "st"
+        ]
+      },
+      {
+        "Name": "Smarty",
+        "Aliases": [
+          "smarty",
+          "tpl"
+        ]
+      },
+      {
+        "Name": "Snobol",
+        "Aliases": [
+          "snobol"
+        ]
+      },
+      {
+        "Name": "Solidity",
+        "Aliases": [
+          "sol",
+          "solidity"
+        ]
+      },
+      {
+        "Name": "SquidConf",
+        "Aliases": [
+          "conf",
+          "squid",
+          "squid.conf",
+          "squidconf"
+        ]
+      },
+      {
+        "Name": "Swift",
+        "Aliases": [
+          "swift"
+        ]
+      },
+      {
+        "Name": "TASM",
+        "Aliases": [
+          "ASM",
+          "asm",
+          "tasm"
+        ]
+      },
+      {
+        "Name": "TOML",
+        "Aliases": [
+          "toml"
+        ]
+      },
+      {
+        "Name": "Tcl",
+        "Aliases": [
+          "rvt",
+          "tcl"
+        ]
+      },
+      {
+        "Name": "Tcsh",
+        "Aliases": [
+          "csh",
+          "tcsh"
+        ]
+      },
+      {
+        "Name": "TeX",
+        "Aliases": [
+          "aux",
+          "latex",
+          "tex",
+          "toc"
+        ]
+      },
+      {
+        "Name": "Termcap",
+        "Aliases": [
+          "src",
+          "termcap"
+        ]
+      },
+      {
+        "Name": "Terminfo",
+        "Aliases": [
+          "src",
+          "terminfo"
+        ]
+      },
+      {
+        "Name": "Terraform",
+        "Aliases": [
+          "terraform",
+          "tf"
+        ]
+      },
+      {
+        "Name": "Thrift",
+        "Aliases": [
+          "thrift"
+        ]
+      },
+      {
+        "Name": "Transact-SQL",
+        "Aliases": [
+          "t-sql",
+          "tsql"
+        ]
+      },
+      {
+        "Name": "Turtle",
+        "Aliases": [
+          "ttl",
+          "turtle"
+        ]
+      },
+      {
+        "Name": "Twig",
+        "Aliases": [
+          "twig"
+        ]
+      },
+      {
+        "Name": "TypeScript",
+        "Aliases": [
+          "ts",
+          "tsx",
+          "typescript"
+        ]
+      },
+      {
+        "Name": "TypoScript",
+        "Aliases": [
+          "ts",
+          "txt",
+          "typoscript"
+        ]
+      },
+      {
+        "Name": "TypoScriptCssData",
+        "Aliases": [
+          "typoscriptcssdata"
+        ]
+      },
+      {
+        "Name": "TypoScriptHtmlData",
+        "Aliases": [
+          "typoscripthtmldata"
+        ]
+      },
+      {
+        "Name": "VHDL",
+        "Aliases": [
+          "vhd",
+          "vhdl"
+        ]
+      },
+      {
+        "Name": "VimL",
+        "Aliases": [
+          "exrc",
+          "gvimrc",
+          "vim",
+          "vimrc"
+        ]
+      },
+      {
+        "Name": "WDTE",
+        "Aliases": [
+          "wdte"
+        ]
+      },
+      {
+        "Name": "XML",
+        "Aliases": [
+          "rss",
+          "svg",
+          "wsdl",
+          "wsf",
+          "xml",
+          "xsd",
+          "xsl",
+          "xslt"
+        ]
+      },
+      {
+        "Name": "Xorg",
+        "Aliases": [
+          "conf",
+          "xorg.conf"
+        ]
+      },
+      {
+        "Name": "YAML",
+        "Aliases": [
+          "yaml",
+          "yml"
+        ]
+      },
+      {
+        "Name": "cfstatement",
+        "Aliases": [
+          "cfs"
+        ]
+      },
+      {
+        "Name": "markdown",
+        "Aliases": [
+          "markdown",
+          "md",
+          "mkd"
+        ]
+      },
+      {
+        "Name": "plaintext",
+        "Aliases": [
+          "no-highlight",
+          "plain",
+          "text",
+          "txt"
+        ]
+      },
+      {
+        "Name": "reStructuredText",
+        "Aliases": [
+          "rest",
+          "restructuredtext",
+          "rst"
+        ]
+      },
+      {
+        "Name": "reg",
+        "Aliases": [
+          "reg",
+          "registry"
+        ]
+      },
+      {
+        "Name": "systemverilog",
+        "Aliases": [
+          "sv",
+          "svh",
+          "systemverilog"
+        ]
+      },
+      {
+        "Name": "verilog",
+        "Aliases": [
+          "v",
+          "verilog"
+        ]
+      }
+    ]
+  },
   "media": {
     "types": [
       {
@@ -198,6 +1427,26 @@
         "notAlternative": false
       },
       {
+        "MediaType": "text/plain+txt",
+        "name": "ROBOTS",
+        "mediaType": {
+          "type": "text/plain",
+          "string": "text/plain+txt",
+          "mainType": "text",
+          "subType": "plain",
+          "suffix": "txt",
+          "delimiter": "."
+        },
+        "path": "",
+        "baseName": "robots",
+        "rel": "alternate",
+        "protocol": "",
+        "isPlainText": true,
+        "isHTML": false,
+        "noUgly": false,
+        "notAlternative": false
+      },
+      {
         "MediaType": "application/rss+xml",
         "name": "RSS",
         "mediaType": {
@@ -216,135 +1465,480 @@
         "isHTML": false,
         "noUgly": true,
         "notAlternative": false
+      },
+      {
+        "MediaType": "application/xml+xml",
+        "name": "Sitemap",
+        "mediaType": {
+          "type": "application/xml",
+          "string": "application/xml+xml",
+          "mainType": "application",
+          "subType": "xml",
+          "suffix": "xml",
+          "delimiter": "."
+        },
+        "path": "",
+        "baseName": "sitemap",
+        "rel": "sitemap",
+        "protocol": "",
+        "isPlainText": false,
+        "isHTML": false,
+        "noUgly": true,
+        "notAlternative": false
       }
     ],
     "layouts": [
       {
-        "Example": "AMP home, with theme \"demoTheme\".",
-        "OutputFormat": "AMP",
-        "Suffix": "html",
-        "Template Lookup Order": [
-          "layouts/index.amp.html",
-          "layouts/index.html",
-          "layouts/_default/list.amp.html",
-          "layouts/_default/list.html",
-          "demoTheme/layouts/index.amp.html",
-          "demoTheme/layouts/index.html",
-          "demoTheme/layouts/_default/list.amp.html",
-          "demoTheme/layouts/_default/list.html"
-        ]
-      },
-      {
-        "Example": "AMP home, French language\".",
-        "OutputFormat": "AMP",
-        "Suffix": "html",
-        "Template Lookup Order": [
-          "layouts/index.fr.amp.html",
-          "layouts/index.amp.html",
-          "layouts/index.fr.html",
-          "layouts/index.html",
-          "layouts/_default/list.fr.amp.html",
-          "layouts/_default/list.amp.html",
-          "layouts/_default/list.fr.html",
-          "layouts/_default/list.html"
-        ]
-      },
-      {
-        "Example": "RSS home, no theme.",
-        "OutputFormat": "RSS",
-        "Suffix": "xml",
-        "Template Lookup Order": [
-          "layouts/rss.xml",
-          "layouts/_default/rss.xml",
-          "layouts/_internal/_default/rss.xml"
-        ]
-      },
-      {
-        "Example": "JSON home, no theme.",
-        "OutputFormat": "JSON",
-        "Suffix": "json",
-        "Template Lookup Order": [
-          "layouts/index.json.json",
-          "layouts/index.json",
-          "layouts/_default/list.json.json",
-          "layouts/_default/list.json"
-        ]
-      },
-      {
-        "Example": "CSV regular, \"layout: demolayout\" in front matter.",
-        "OutputFormat": "CSV",
-        "Suffix": "csv",
-        "Template Lookup Order": [
-          "layouts/_default/demolayout.csv.csv",
-          "layouts/_default/demolayout.csv"
-        ]
-      },
-      {
-        "Example": "JSON regular, \"type: demotype\" in front matter.",
-        "OutputFormat": "JSON",
-        "Suffix": "json",
-        "Template Lookup Order": [
-          "layouts/demotype/single.json.json",
-          "layouts/demotype/single.json",
-          "layouts/_default/single.json.json",
-          "layouts/_default/single.json"
-        ]
-      },
-      {
-        "Example": "HTML regular.",
+        "Example": "Single page in \"posts\" section",
+        "Kind": "page",
         "OutputFormat": "HTML",
         "Suffix": "html",
         "Template Lookup Order": [
+          "layouts/posts/single.html.html",
+          "layouts/posts/single.html",
           "layouts/_default/single.html.html",
           "layouts/_default/single.html"
         ]
       },
       {
-        "Example": "AMP regular.",
+        "Example": "Single page in \"posts\" section with layout set",
+        "Kind": "page",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/posts/demolayout.html.html",
+          "layouts/posts/single.html.html",
+          "layouts/posts/demolayout.html",
+          "layouts/posts/single.html",
+          "layouts/_default/demolayout.html.html",
+          "layouts/_default/single.html.html",
+          "layouts/_default/demolayout.html",
+          "layouts/_default/single.html"
+        ]
+      },
+      {
+        "Example": "AMP single page",
+        "Kind": "page",
         "OutputFormat": "AMP",
         "Suffix": "html",
         "Template Lookup Order": [
+          "layouts/posts/single.amp.html",
+          "layouts/posts/single.html",
           "layouts/_default/single.amp.html",
           "layouts/_default/single.html"
         ]
       },
       {
-        "Example": "Calendar blog section.",
-        "OutputFormat": "Calendar",
-        "Suffix": "ics",
+        "Example": "AMP single page, French language",
+        "Kind": "page",
+        "OutputFormat": "AMP",
+        "Suffix": "html",
         "Template Lookup Order": [
-          "layouts/section/blog.calendar.ics",
-          "layouts/section/blog.ics",
-          "layouts/blog/list.calendar.ics",
-          "layouts/blog/list.ics",
-          "layouts/_default/section.calendar.ics",
-          "layouts/_default/section.ics",
-          "layouts/_default/list.calendar.ics",
-          "layouts/_default/list.ics"
+          "layouts/posts/single.fr.amp.html",
+          "layouts/posts/single.amp.html",
+          "layouts/posts/single.fr.html",
+          "layouts/posts/single.html",
+          "layouts/_default/single.fr.amp.html",
+          "layouts/_default/single.amp.html",
+          "layouts/_default/single.fr.html",
+          "layouts/_default/single.html"
         ]
       },
       {
-        "Example": "Calendar taxonomy list.",
-        "OutputFormat": "Calendar",
-        "Suffix": "ics",
+        "Example": "Home page",
+        "Kind": "home",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
         "Template Lookup Order": [
-          "layouts/taxonomy/tag.calendar.ics",
-          "layouts/taxonomy/tag.ics",
-          "layouts/_default/taxonomy.calendar.ics",
-          "layouts/_default/taxonomy.ics",
-          "layouts/_default/list.calendar.ics",
-          "layouts/_default/list.ics"
+          "layouts/index.html.html",
+          "layouts/home.html.html",
+          "layouts/list.html.html",
+          "layouts/index.html",
+          "layouts/home.html",
+          "layouts/list.html",
+          "layouts/_default/index.html.html",
+          "layouts/_default/home.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/index.html",
+          "layouts/_default/home.html",
+          "layouts/_default/list.html"
         ]
       },
       {
-        "Example": "Calendar taxonomy term.",
-        "OutputFormat": "Calendar",
-        "Suffix": "ics",
+        "Example": "Home page with type set",
+        "Kind": "home",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
         "Template Lookup Order": [
-          "layouts/taxonomy/tag.terms.calendar.ics",
-          "layouts/taxonomy/tag.terms.ics",
-          "layouts/_default/terms.calendar.ics",
-          "layouts/_default/terms.ics"
+          "layouts/demotype/index.html.html",
+          "layouts/demotype/home.html.html",
+          "layouts/demotype/list.html.html",
+          "layouts/demotype/index.html",
+          "layouts/demotype/home.html",
+          "layouts/demotype/list.html",
+          "layouts/index.html.html",
+          "layouts/home.html.html",
+          "layouts/list.html.html",
+          "layouts/index.html",
+          "layouts/home.html",
+          "layouts/list.html",
+          "layouts/_default/index.html.html",
+          "layouts/_default/home.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/index.html",
+          "layouts/_default/home.html",
+          "layouts/_default/list.html"
+        ]
+      },
+      {
+        "Example": "Home page with layout set",
+        "Kind": "home",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/demolayout.html.html",
+          "layouts/index.html.html",
+          "layouts/home.html.html",
+          "layouts/list.html.html",
+          "layouts/demolayout.html",
+          "layouts/index.html",
+          "layouts/home.html",
+          "layouts/list.html",
+          "layouts/_default/demolayout.html.html",
+          "layouts/_default/index.html.html",
+          "layouts/_default/home.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/demolayout.html",
+          "layouts/_default/index.html",
+          "layouts/_default/home.html",
+          "layouts/_default/list.html"
+        ]
+      },
+      {
+        "Example": "AMP home, French language\"",
+        "Kind": "home",
+        "OutputFormat": "AMP",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/index.fr.amp.html",
+          "layouts/home.fr.amp.html",
+          "layouts/list.fr.amp.html",
+          "layouts/index.amp.html",
+          "layouts/home.amp.html",
+          "layouts/list.amp.html",
+          "layouts/index.fr.html",
+          "layouts/home.fr.html",
+          "layouts/list.fr.html",
+          "layouts/index.html",
+          "layouts/home.html",
+          "layouts/list.html",
+          "layouts/_default/index.fr.amp.html",
+          "layouts/_default/home.fr.amp.html",
+          "layouts/_default/list.fr.amp.html",
+          "layouts/_default/index.amp.html",
+          "layouts/_default/home.amp.html",
+          "layouts/_default/list.amp.html",
+          "layouts/_default/index.fr.html",
+          "layouts/_default/home.fr.html",
+          "layouts/_default/list.fr.html",
+          "layouts/_default/index.html",
+          "layouts/_default/home.html",
+          "layouts/_default/list.html"
+        ]
+      },
+      {
+        "Example": "JSON home",
+        "Kind": "home",
+        "OutputFormat": "JSON",
+        "Suffix": "json",
+        "Template Lookup Order": [
+          "layouts/index.json.json",
+          "layouts/home.json.json",
+          "layouts/list.json.json",
+          "layouts/index.json",
+          "layouts/home.json",
+          "layouts/list.json",
+          "layouts/_default/index.json.json",
+          "layouts/_default/home.json.json",
+          "layouts/_default/list.json.json",
+          "layouts/_default/index.json",
+          "layouts/_default/home.json",
+          "layouts/_default/list.json"
+        ]
+      },
+      {
+        "Example": "RSS home",
+        "Kind": "home",
+        "OutputFormat": "RSS",
+        "Suffix": "xml",
+        "Template Lookup Order": [
+          "layouts/index.rss.xml",
+          "layouts/home.rss.xml",
+          "layouts/rss.xml",
+          "layouts/list.rss.xml",
+          "layouts/index.xml",
+          "layouts/home.xml",
+          "layouts/list.xml",
+          "layouts/_default/index.rss.xml",
+          "layouts/_default/home.rss.xml",
+          "layouts/_default/rss.xml",
+          "layouts/_default/list.rss.xml",
+          "layouts/_default/index.xml",
+          "layouts/_default/home.xml",
+          "layouts/_default/list.xml",
+          "layouts/_internal/_default/rss.xml"
+        ]
+      },
+      {
+        "Example": "RSS section posts",
+        "Kind": "section",
+        "OutputFormat": "RSS",
+        "Suffix": "xml",
+        "Template Lookup Order": [
+          "layouts/posts/section.rss.xml",
+          "layouts/posts/rss.xml",
+          "layouts/posts/list.rss.xml",
+          "layouts/posts/section.xml",
+          "layouts/posts/list.xml",
+          "layouts/section/section.rss.xml",
+          "layouts/section/rss.xml",
+          "layouts/section/list.rss.xml",
+          "layouts/section/section.xml",
+          "layouts/section/list.xml",
+          "layouts/_default/section.rss.xml",
+          "layouts/_default/rss.xml",
+          "layouts/_default/list.rss.xml",
+          "layouts/_default/section.xml",
+          "layouts/_default/list.xml",
+          "layouts/_internal/_default/rss.xml"
+        ]
+      },
+      {
+        "Example": "Taxonomy list in categories",
+        "Kind": "taxonomy",
+        "OutputFormat": "RSS",
+        "Suffix": "xml",
+        "Template Lookup Order": [
+          "layouts/categories/category.rss.xml",
+          "layouts/categories/taxonomy.rss.xml",
+          "layouts/categories/rss.xml",
+          "layouts/categories/list.rss.xml",
+          "layouts/categories/category.xml",
+          "layouts/categories/taxonomy.xml",
+          "layouts/categories/list.xml",
+          "layouts/taxonomy/category.rss.xml",
+          "layouts/taxonomy/taxonomy.rss.xml",
+          "layouts/taxonomy/rss.xml",
+          "layouts/taxonomy/list.rss.xml",
+          "layouts/taxonomy/category.xml",
+          "layouts/taxonomy/taxonomy.xml",
+          "layouts/taxonomy/list.xml",
+          "layouts/category/category.rss.xml",
+          "layouts/category/taxonomy.rss.xml",
+          "layouts/category/rss.xml",
+          "layouts/category/list.rss.xml",
+          "layouts/category/category.xml",
+          "layouts/category/taxonomy.xml",
+          "layouts/category/list.xml",
+          "layouts/_default/category.rss.xml",
+          "layouts/_default/taxonomy.rss.xml",
+          "layouts/_default/rss.xml",
+          "layouts/_default/list.rss.xml",
+          "layouts/_default/category.xml",
+          "layouts/_default/taxonomy.xml",
+          "layouts/_default/list.xml",
+          "layouts/_internal/_default/rss.xml"
+        ]
+      },
+      {
+        "Example": "Taxonomy terms in categories",
+        "Kind": "taxonomyTerm",
+        "OutputFormat": "RSS",
+        "Suffix": "xml",
+        "Template Lookup Order": [
+          "layouts/categories/category.terms.rss.xml",
+          "layouts/categories/terms.rss.xml",
+          "layouts/categories/rss.xml",
+          "layouts/categories/list.rss.xml",
+          "layouts/categories/category.terms.xml",
+          "layouts/categories/terms.xml",
+          "layouts/categories/list.xml",
+          "layouts/taxonomy/category.terms.rss.xml",
+          "layouts/taxonomy/terms.rss.xml",
+          "layouts/taxonomy/rss.xml",
+          "layouts/taxonomy/list.rss.xml",
+          "layouts/taxonomy/category.terms.xml",
+          "layouts/taxonomy/terms.xml",
+          "layouts/taxonomy/list.xml",
+          "layouts/category/category.terms.rss.xml",
+          "layouts/category/terms.rss.xml",
+          "layouts/category/rss.xml",
+          "layouts/category/list.rss.xml",
+          "layouts/category/category.terms.xml",
+          "layouts/category/terms.xml",
+          "layouts/category/list.xml",
+          "layouts/_default/category.terms.rss.xml",
+          "layouts/_default/terms.rss.xml",
+          "layouts/_default/rss.xml",
+          "layouts/_default/list.rss.xml",
+          "layouts/_default/category.terms.xml",
+          "layouts/_default/terms.xml",
+          "layouts/_default/list.xml",
+          "layouts/_internal/_default/rss.xml"
+        ]
+      },
+      {
+        "Example": "Section list for \"posts\" section",
+        "Kind": "section",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/posts/posts.html.html",
+          "layouts/posts/section.html.html",
+          "layouts/posts/list.html.html",
+          "layouts/posts/posts.html",
+          "layouts/posts/section.html",
+          "layouts/posts/list.html",
+          "layouts/section/posts.html.html",
+          "layouts/section/section.html.html",
+          "layouts/section/list.html.html",
+          "layouts/section/posts.html",
+          "layouts/section/section.html",
+          "layouts/section/list.html",
+          "layouts/_default/posts.html.html",
+          "layouts/_default/section.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/posts.html",
+          "layouts/_default/section.html",
+          "layouts/_default/list.html"
+        ]
+      },
+      {
+        "Example": "Section list for \"posts\" section with type set to \"blog\"",
+        "Kind": "section",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/blog/posts.html.html",
+          "layouts/blog/section.html.html",
+          "layouts/blog/list.html.html",
+          "layouts/blog/posts.html",
+          "layouts/blog/section.html",
+          "layouts/blog/list.html",
+          "layouts/posts/posts.html.html",
+          "layouts/posts/section.html.html",
+          "layouts/posts/list.html.html",
+          "layouts/posts/posts.html",
+          "layouts/posts/section.html",
+          "layouts/posts/list.html",
+          "layouts/section/posts.html.html",
+          "layouts/section/section.html.html",
+          "layouts/section/list.html.html",
+          "layouts/section/posts.html",
+          "layouts/section/section.html",
+          "layouts/section/list.html",
+          "layouts/_default/posts.html.html",
+          "layouts/_default/section.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/posts.html",
+          "layouts/_default/section.html",
+          "layouts/_default/list.html"
+        ]
+      },
+      {
+        "Example": "Section list for \"posts\" section with layout set to \"demoLayout\"",
+        "Kind": "section",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/posts/demolayout.html.html",
+          "layouts/posts/posts.html.html",
+          "layouts/posts/section.html.html",
+          "layouts/posts/list.html.html",
+          "layouts/posts/demolayout.html",
+          "layouts/posts/posts.html",
+          "layouts/posts/section.html",
+          "layouts/posts/list.html",
+          "layouts/section/demolayout.html.html",
+          "layouts/section/posts.html.html",
+          "layouts/section/section.html.html",
+          "layouts/section/list.html.html",
+          "layouts/section/demolayout.html",
+          "layouts/section/posts.html",
+          "layouts/section/section.html",
+          "layouts/section/list.html",
+          "layouts/_default/demolayout.html.html",
+          "layouts/_default/posts.html.html",
+          "layouts/_default/section.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/demolayout.html",
+          "layouts/_default/posts.html",
+          "layouts/_default/section.html",
+          "layouts/_default/list.html"
+        ]
+      },
+      {
+        "Example": "Taxonomy list in categories",
+        "Kind": "taxonomy",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/categories/category.html.html",
+          "layouts/categories/taxonomy.html.html",
+          "layouts/categories/list.html.html",
+          "layouts/categories/category.html",
+          "layouts/categories/taxonomy.html",
+          "layouts/categories/list.html",
+          "layouts/taxonomy/category.html.html",
+          "layouts/taxonomy/taxonomy.html.html",
+          "layouts/taxonomy/list.html.html",
+          "layouts/taxonomy/category.html",
+          "layouts/taxonomy/taxonomy.html",
+          "layouts/taxonomy/list.html",
+          "layouts/category/category.html.html",
+          "layouts/category/taxonomy.html.html",
+          "layouts/category/list.html.html",
+          "layouts/category/category.html",
+          "layouts/category/taxonomy.html",
+          "layouts/category/list.html",
+          "layouts/_default/category.html.html",
+          "layouts/_default/taxonomy.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/category.html",
+          "layouts/_default/taxonomy.html",
+          "layouts/_default/list.html"
+        ]
+      },
+      {
+        "Example": "Taxonomy term in categories",
+        "Kind": "taxonomyTerm",
+        "OutputFormat": "HTML",
+        "Suffix": "html",
+        "Template Lookup Order": [
+          "layouts/categories/category.terms.html.html",
+          "layouts/categories/terms.html.html",
+          "layouts/categories/list.html.html",
+          "layouts/categories/category.terms.html",
+          "layouts/categories/terms.html",
+          "layouts/categories/list.html",
+          "layouts/taxonomy/category.terms.html.html",
+          "layouts/taxonomy/terms.html.html",
+          "layouts/taxonomy/list.html.html",
+          "layouts/taxonomy/category.terms.html",
+          "layouts/taxonomy/terms.html",
+          "layouts/taxonomy/list.html",
+          "layouts/category/category.terms.html.html",
+          "layouts/category/terms.html.html",
+          "layouts/category/list.html.html",
+          "layouts/category/category.terms.html",
+          "layouts/category/terms.html",
+          "layouts/category/list.html",
+          "layouts/_default/category.terms.html.html",
+          "layouts/_default/terms.html.html",
+          "layouts/_default/list.html.html",
+          "layouts/_default/category.terms.html",
+          "layouts/_default/terms.html",
+          "layouts/_default/list.html"
         ]
       }
     ]
@@ -461,7 +2055,12 @@
           "Aliases": [
             "ge"
           ],
-          "Examples": []
+          "Examples": [
+            [
+              "{{ if ge .Hugo.Version \"0.36\" }}Reasonable new Hugo version!{{ end }}",
+              "Reasonable new Hugo version!"
+            ]
+          ]
         },
         "Gt": {
           "Description": "Gt returns the boolean truth of arg1 \u003e arg2.",
@@ -1038,6 +2637,12 @@
         }
       },
       "lang": {
+        "Merge": {
+          "Description": "",
+          "Args": null,
+          "Aliases": null,
+          "Examples": null
+        },
         "NumFmt": {
           "Description": "NumFmt formats a number with the given precision using the\nnegative, decimal, and grouping options.  The `options`\nparameter is a string consisting of `\u003cnegative\u003e \u003cdecimal\u003e \u003cgrouping\u003e`.  The\ndefault `options` value is `- . ,`.\n\nNote that numbers are rounded up at 5 or greater.\nSo, with precision set to 0, 1.5 becomes `2`, and 1.4 becomes `1`.",
           "Args": [
@@ -1319,6 +2924,72 @@
           "Examples": []
         }
       },
+      "path": {
+        "Base": {
+          "Description": "",
+          "Args": null,
+          "Aliases": null,
+          "Examples": null
+        },
+        "Dir": {
+          "Description": "",
+          "Args": null,
+          "Aliases": null,
+          "Examples": null
+        },
+        "Ext": {
+          "Description": "",
+          "Args": null,
+          "Aliases": null,
+          "Examples": null
+        },
+        "Join": {
+          "Description": "Join joins any number of path elements into a single path, adding a\nseparating slash if necessary. All the input\npath elements are passed into filepath.ToSlash converting any Windows slashes\nto forward slashes.\nThe result is Cleaned; in particular,\nall empty strings are ignored.",
+          "Args": [
+            "elements"
+          ],
+          "Aliases": null,
+          "Examples": [
+            [
+              "{{ slice \"my/path\" \"filename.txt\" | path.Join  }}",
+              "my/path/filename.txt"
+            ],
+            [
+              "{{  path.Join \"my\" \"path\" \"filename.txt\" }}",
+              "my/path/filename.txt"
+            ],
+            [
+              "{{ \"my/path/filename.txt\" | path.Ext  }}",
+              ".txt"
+            ],
+            [
+              "{{ \"my/path/filename.txt\" | path.Base  }}",
+              "filename.txt"
+            ],
+            [
+              "{{ \"my/path/filename.txt\" | path.Dir  }}",
+              "my/path"
+            ]
+          ]
+        },
+        "Split": {
+          "Description": "Split splits path immediately following the final slash,\nseparating it into a directory and file name component.\nIf there is no slash in path, Split returns an empty dir and\nfile set to path.\nThe input path is passed into filepath.ToSlash converting any Windows slashes\nto forward slashes.\nThe returned values have the property that path = dir+file.",
+          "Args": [
+            "path"
+          ],
+          "Aliases": null,
+          "Examples": [
+            [
+              "{{ \"/my/path/filename.txt\" | path.Split }}",
+              "/my/path/|filename.txt"
+            ],
+            [
+              "{{ \"/my/path/filename.txt\" | path.Split }}",
+              "/my/path/|filename.txt"
+            ]
+          ]
+        }
+      },
       "safe": {
         "CSS": {
           "Description": "CSS returns a given string as html/template CSS content.",
@@ -1427,7 +3098,7 @@
           ],
           "Examples": [
             [
-              "{{chomp \"\u003cp\u003eBlockhead\u003c/p\u003e\\n\" }}",
+              "{{chomp \"\u003cp\u003eBlockhead\u003c/p\u003e\\n\" | safeHTML }}",
               "\u003cp\u003eBlockhead\u003c/p\u003e"
             ]
           ]
@@ -1507,6 +3178,20 @@
           "Aliases": null,
           "Examples": null
         },
+        "Repeat": {
+          "Description": "Repeat returns a new string consisting of count copies of the string s.",
+          "Args": [
+            "n",
+            "s"
+          ],
+          "Aliases": null,
+          "Examples": [
+            [
+              "{{ \"yo\" | strings.Repeat 4 }}",
+              "yoyoyoyo"
+            ]
+          ]
+        },
         "Replace": {
           "Description": "Replace returns a copy of the string s with all occurrences of old replaced\nwith new.",
           "Args": [
@@ -1534,6 +3219,14 @@
           "Aliases": [
             "replaceRE"
           ],
+          "Examples": []
+        },
+        "RuneCount": {
+          "Description": "RuneCount returns the number of runes in s.",
+          "Args": [
+            "s"
+          ],
+          "Aliases": null,
           "Examples": []
         },
         "SliceString": {
@@ -1912,6 +3605,20 @@
               "Hello world, gophers!"
             ]
           ]
+        },
+        "Remarshal": {
+          "Description": "Remarshal is used in the Hugo documentation to convert configuration\nexamples from YAML to JSON, TOML (and possibly the other way around).\nThe is primarily a helper for the Hugo docs site.\nIt is not a general purpose YAML to TOML converter etc., and may\nchange without notice if it serves a purpose in the docs.\nFormat is one of json, yaml or toml.",
+          "Args": [
+            "format",
+            "data"
+          ],
+          "Aliases": null,
+          "Examples": [
+            [
+              "{{ \"title = \\\"Hello World\\\"\" | transform.Remarshal \"json\" | safeHTML }}",
+              "{\n   \"title\": \"Hello World\"\n}\n"
+            ]
+          ]
         }
       },
       "urls": {
@@ -1934,6 +3641,21 @@
             "absURL"
           ],
           "Examples": []
+        },
+        "Anchorize": {
+          "Description": "Anchorize creates sanitized anchor names that are compatible with Blackfriday.",
+          "Args": [
+            "a"
+          ],
+          "Aliases": [
+            "anchorize"
+          ],
+          "Examples": [
+            [
+              "{{ \"This is a title\" | anchorize }}",
+              "this-is-a-title"
+            ]
+          ]
         },
         "Parse": {
           "Description": "",

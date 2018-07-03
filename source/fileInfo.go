@@ -14,11 +14,16 @@
 package source
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/spf13/afero"
+
+	"github.com/gohugoio/hugo/hugofs"
 
 	"github.com/gohugoio/hugo/helpers"
 )
@@ -71,9 +76,6 @@ type File interface {
 	FileInfo() os.FileInfo
 
 	String() string
-
-	// Deprecated
-	Bytes() []byte
 }
 
 // A ReadableFile is a File that is readable.
@@ -86,7 +88,10 @@ type FileInfo struct {
 
 	// Absolute filename to the file on disk.
 	filename string
-	fi       os.FileInfo
+
+	sp *SourceSpec
+
+	fi os.FileInfo
 
 	// Derived from filename
 	ext  string // Extension without any "."
@@ -103,8 +108,6 @@ type FileInfo struct {
 	isLeafBundle        bool
 
 	uniqueID string
-
-	sp *SourceSpec
 
 	lazyInit sync.Once
 }
@@ -132,12 +135,6 @@ func (fi *FileInfo) FileInfo() os.FileInfo {
 	return fi.fi
 }
 
-func (fi *FileInfo) Bytes() []byte {
-	// Remove in Hugo 0.34
-	helpers.Deprecated("File", "Bytes", "", false)
-	return []byte("")
-}
-
 func (fi *FileInfo) String() string { return fi.BaseFileName() }
 
 // We create a lot of these FileInfo objects, but there are parts of it used only
@@ -146,7 +143,6 @@ func (fi *FileInfo) init() {
 	fi.lazyInit.Do(func() {
 		relDir := strings.Trim(fi.relDir, helpers.FilePathSeparator)
 		parts := strings.Split(relDir, helpers.FilePathSeparator)
-
 		var section string
 		if (!fi.isLeafBundle && len(parts) == 1) || len(parts) > 1 {
 			section = parts[0]
@@ -160,6 +156,19 @@ func (fi *FileInfo) init() {
 }
 
 func (sp *SourceSpec) NewFileInfo(baseDir, filename string, isLeafBundle bool, fi os.FileInfo) *FileInfo {
+
+	var lang, translationBaseName, relPath string
+
+	if fp, ok := fi.(hugofs.FilePather); ok {
+		filename = fp.Filename()
+		baseDir = fp.BaseDir()
+		relPath = fp.Path()
+	}
+
+	if fl, ok := fi.(hugofs.LanguageAnnouncer); ok {
+		lang = fl.Lang()
+		translationBaseName = fl.TranslationBaseName()
+	}
 
 	dir, name := filepath.Split(filename)
 	if !strings.HasSuffix(dir, helpers.FilePathSeparator) {
@@ -175,19 +184,19 @@ func (sp *SourceSpec) NewFileInfo(baseDir, filename string, isLeafBundle bool, f
 
 	relDir = strings.TrimPrefix(relDir, helpers.FilePathSeparator)
 
-	relPath := filepath.Join(relDir, name)
+	if relPath == "" {
+		relPath = filepath.Join(relDir, name)
+	}
 
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
 	baseName := helpers.Filename(name)
 
-	lang := strings.TrimPrefix(filepath.Ext(baseName), ".")
-	var translationBaseName string
-
-	if _, ok := sp.Languages[lang]; lang == "" || !ok {
-		lang = sp.DefaultContentLanguage
-		translationBaseName = baseName
-	} else {
-		translationBaseName = helpers.Filename(baseName)
+	if translationBaseName == "" {
+		// This is usyally provided by the filesystem. But this FileInfo is also
+		// created in a standalone context when doing "hugo new". This is
+		// an approximate implementation, which is "good enough" in that case.
+		fileLangExt := filepath.Ext(baseName)
+		translationBaseName = strings.TrimSuffix(baseName, fileLangExt)
 	}
 
 	f := &FileInfo{
@@ -211,5 +220,27 @@ func (sp *SourceSpec) NewFileInfo(baseDir, filename string, isLeafBundle bool, f
 
 // Open implements ReadableFile.
 func (fi *FileInfo) Open() (io.ReadCloser, error) {
-	return fi.sp.Fs.Source.Open(fi.Filename())
+	f, err := fi.sp.SourceFs.Open(fi.Filename())
+	return f, err
+}
+
+func printFs(fs afero.Fs, path string, w io.Writer) {
+	if fs == nil {
+		return
+	}
+	afero.Walk(fs, path, func(path string, info os.FileInfo, err error) error {
+
+		if info != nil && !info.IsDir() {
+
+			s := path
+			if lang, ok := info.(hugofs.LanguageAnnouncer); ok {
+				s = s + "\t" + lang.Lang()
+			}
+			if fp, ok := info.(hugofs.FilePather); ok {
+				s = s + "\t" + fp.Filename()
+			}
+			fmt.Fprintln(w, "    ", s)
+		}
+		return nil
+	})
 }

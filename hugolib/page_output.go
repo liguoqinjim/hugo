@@ -24,7 +24,6 @@ import (
 
 	"github.com/gohugoio/hugo/media"
 
-	"github.com/gohugoio/hugo/helpers"
 	"github.com/gohugoio/hugo/output"
 )
 
@@ -55,7 +54,7 @@ func (p *PageOutput) targetPath(addends ...string) (string, error) {
 	return tp, nil
 }
 
-func newPageOutput(p *Page, createCopy bool, f output.Format) (*PageOutput, error) {
+func newPageOutput(p *Page, createCopy, initContent bool, f output.Format) (*PageOutput, error) {
 	// TODO(bep) This is only needed for tests and we should get rid of it.
 	if p.targetPathDescriptorPrototype == nil {
 		if err := p.initPaths(); err != nil {
@@ -64,7 +63,7 @@ func newPageOutput(p *Page, createCopy bool, f output.Format) (*PageOutput, erro
 	}
 
 	if createCopy {
-		p = p.copy()
+		p = p.copy(initContent)
 	}
 
 	td, err := p.createTargetPathDescriptor(f)
@@ -82,8 +81,8 @@ func newPageOutput(p *Page, createCopy bool, f output.Format) (*PageOutput, erro
 
 // copy creates a copy of this PageOutput with the lazy sync.Once vars reset
 // so they will be evaluated again, for word count calculations etc.
-func (p *PageOutput) copyWithFormat(f output.Format) (*PageOutput, error) {
-	c, err := newPageOutput(p.Page, true, f)
+func (p *PageOutput) copyWithFormat(f output.Format, initContent bool) (*PageOutput, error) {
+	c, err := newPageOutput(p.Page, true, initContent, f)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +91,7 @@ func (p *PageOutput) copyWithFormat(f output.Format) (*PageOutput, error) {
 }
 
 func (p *PageOutput) copy() (*PageOutput, error) {
-	return p.copyWithFormat(p.outputFormat)
+	return p.copyWithFormat(p.outputFormat, false)
 }
 
 func (p *PageOutput) layouts(layouts ...string) ([]string, error) {
@@ -115,7 +114,7 @@ func (p *PageOutput) layouts(layouts ...string) ([]string, error) {
 func (p *PageOutput) Render(layout ...string) template.HTML {
 	l, err := p.layouts(layout...)
 	if err != nil {
-		helpers.DistinctErrorLog.Printf("in .Render: Failed to resolve layout %q for page %q", layout, p.pathOrTitle())
+		p.s.DistinctErrorLog.Printf("in .Render: Failed to resolve layout %q for page %q", layout, p.pathOrTitle())
 		return ""
 	}
 
@@ -130,7 +129,7 @@ func (p *PageOutput) Render(layout ...string) template.HTML {
 		if templ != nil {
 			res, err := templ.ExecuteToString(p)
 			if err != nil {
-				helpers.DistinctErrorLog.Printf("in .Render: Failed to execute template %q for page %q", layout, p.pathOrTitle())
+				p.s.DistinctErrorLog.Printf("in .Render: Failed to execute template %q: %s", layout, err)
 				return template.HTML("")
 			}
 			return template.HTML(res)
@@ -142,24 +141,9 @@ func (p *PageOutput) Render(layout ...string) template.HTML {
 }
 
 func (p *Page) Render(layout ...string) template.HTML {
-	p.pageOutputInit.Do(func() {
-		if p.mainPageOutput != nil {
-			return
-		}
-		// If Render is called in a range loop, the page output isn't available.
-		// So, create one.
-		outFormat := p.outputFormats[0]
-		pageOutput, err := newPageOutput(p, true, outFormat)
-
-		if err != nil {
-			p.s.Log.ERROR.Printf("Failed to create output page for type %q for page %q: %s", outFormat.Name, p.pathOrTitle(), err)
-			return
-		}
-
-		p.mainPageOutput = pageOutput
-
-	})
-
+	if p.mainPageOutput == nil {
+		panic(fmt.Sprintf("programming error: no mainPageOutput for %q", p.Path()))
+	}
 	return p.mainPageOutput.Render(layout...)
 }
 

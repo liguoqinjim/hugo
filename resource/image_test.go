@@ -15,7 +15,15 @@ package resource
 
 import (
 	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
+
+	"github.com/disintegration/imaging"
+
+	"sync"
 
 	"github.com/stretchr/testify/require"
 )
@@ -50,11 +58,13 @@ func TestParseImageConfig(t *testing.T) {
 	}
 }
 
-func TestImageTransform(t *testing.T) {
+func TestImageTransformBasic(t *testing.T) {
 
 	assert := require.New(t)
 
 	image := fetchSunset(assert)
+
+	printFs(image.sourceFs(), "", os.Stdout)
 
 	assert.Equal("/a/sunset.jpg", image.RelPermalink())
 	assert.Equal("image", image.ResourceType())
@@ -68,27 +78,27 @@ func TestImageTransform(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(320, resized0x.Width())
 	assert.Equal(200, resized0x.Height())
-	assertFileCache(assert, image.spec.Fs, resized0x.RelPermalink(), 320, 200)
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, resized0x.RelPermalink(), 320, 200)
 
 	resizedx0, err := image.Resize("200x")
 	assert.NoError(err)
 	assert.Equal(200, resizedx0.Width())
 	assert.Equal(125, resizedx0.Height())
-	assertFileCache(assert, image.spec.Fs, resizedx0.RelPermalink(), 200, 125)
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, resizedx0.RelPermalink(), 200, 125)
 
 	resizedAndRotated, err := image.Resize("x200 r90")
 	assert.NoError(err)
 	assert.Equal(125, resizedAndRotated.Width())
 	assert.Equal(200, resizedAndRotated.Height())
-	assertFileCache(assert, image.spec.Fs, resizedAndRotated.RelPermalink(), 125, 200)
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, resizedAndRotated.RelPermalink(), 125, 200)
 
-	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_300x200_resize_q75_box_center.jpg", resized.RelPermalink())
+	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_300x200_resize_q68_linear.jpg", resized.RelPermalink())
 	assert.Equal(300, resized.Width())
 	assert.Equal(200, resized.Height())
 
 	fitted, err := resized.Fit("50x50")
 	assert.NoError(err)
-	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_0bda5208a94b50a6e643ad139e0dfa2f.jpg", fitted.RelPermalink())
+	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_625708021e2bb281c9f1002f88e4753f.jpg", fitted.RelPermalink())
 	assert.Equal(50, fitted.Width())
 	assert.Equal(31, fitted.Height())
 
@@ -96,22 +106,29 @@ func TestImageTransform(t *testing.T) {
 	fittedAgain, _ := fitted.Fit("10x20")
 	fittedAgain, err = fittedAgain.Fit("10x20")
 	assert.NoError(err)
-	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_6b3034f4ca91823700bd9ff7a12acf2e.jpg", fittedAgain.RelPermalink())
+	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_3f65ba24dc2b7fba0f56d7f104519157.jpg", fittedAgain.RelPermalink())
 	assert.Equal(10, fittedAgain.Width())
 	assert.Equal(6, fittedAgain.Height())
 
 	filled, err := image.Fill("200x100 bottomLeft")
 	assert.NoError(err)
-	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_200x100_fill_q75_box_bottomleft.jpg", filled.RelPermalink())
+	assert.Equal("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_200x100_fill_q68_linear_bottomleft.jpg", filled.RelPermalink())
 	assert.Equal(200, filled.Width())
 	assert.Equal(100, filled.Height())
-	assertFileCache(assert, image.spec.Fs, filled.RelPermalink(), 200, 100)
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, filled.RelPermalink(), 200, 100)
+
+	smart, err := image.Fill("200x100 smart")
+	assert.NoError(err)
+	assert.Equal(fmt.Sprintf("/a/sunset_hu59e56ffff1bc1d8d122b1403d34e039f_90587_200x100_fill_q68_linear_smart%d.jpg", smartCropVersionNumber), smart.RelPermalink())
+	assert.Equal(200, smart.Width())
+	assert.Equal(100, smart.Height())
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, smart.RelPermalink(), 200, 100)
 
 	// Check cache
 	filledAgain, err := image.Fill("200x100 bottomLeft")
 	assert.NoError(err)
 	assert.True(filled == filledAgain)
-	assertFileCache(assert, image.spec.Fs, filledAgain.RelPermalink(), 200, 100)
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, filledAgain.RelPermalink(), 200, 100)
 
 }
 
@@ -126,12 +143,57 @@ func TestImageTransformLongFilename(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(resized)
 	assert.Equal(200, resized.Width())
-	assert.Equal("/a/_hu59e56ffff1bc1d8d122b1403d34e039f_90587_fd0f8b23902abcf4092b68783834f7fe.jpg", resized.RelPermalink())
+	assert.Equal("/a/_hu59e56ffff1bc1d8d122b1403d34e039f_90587_65b757a6e14debeae720fe8831f0a9bc.jpg", resized.RelPermalink())
 	resized, err = resized.Resize("100x")
 	assert.NoError(err)
 	assert.NotNil(resized)
 	assert.Equal(100, resized.Width())
-	assert.Equal("/a/_hu59e56ffff1bc1d8d122b1403d34e039f_90587_5f399e62910070692b3034a925f1b2d7.jpg", resized.RelPermalink())
+	assert.Equal("/a/_hu59e56ffff1bc1d8d122b1403d34e039f_90587_c876768085288f41211f768147ba2647.jpg", resized.RelPermalink())
+}
+
+func TestImageTransformConcurrent(t *testing.T) {
+
+	var wg sync.WaitGroup
+
+	assert := require.New(t)
+
+	spec := newTestResourceOsFs(assert)
+
+	image := fetchImageForSpec(spec, assert, "sunset.jpg")
+
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < 5; j++ {
+				img := image
+				for k := 0; k < 2; k++ {
+					r1, err := img.Resize(fmt.Sprintf("%dx", id-k))
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					if r1.Width() != id-k {
+						t.Fatalf("Width: %d:%d", r1.Width(), j)
+					}
+
+					r2, err := r1.Resize(fmt.Sprintf("%dx", id-k-1))
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					_, err = r2.decodeSource()
+					if err != nil {
+						t.Fatal("Err decode:", err)
+					}
+
+					img = r1
+				}
+			}
+		}(i + 20)
+	}
+
+	wg.Wait()
 }
 
 func TestDecodeImaging(t *testing.T) {
@@ -139,6 +201,7 @@ func TestDecodeImaging(t *testing.T) {
 	m := map[string]interface{}{
 		"quality":        42,
 		"resampleFilter": "NearestNeighbor",
+		"anchor":         "topLeft",
 	}
 
 	imaging, err := decodeImaging(m)
@@ -146,6 +209,37 @@ func TestDecodeImaging(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(42, imaging.Quality)
 	assert.Equal("nearestneighbor", imaging.ResampleFilter)
+	assert.Equal("topleft", imaging.Anchor)
+
+	m = map[string]interface{}{}
+
+	imaging, err = decodeImaging(m)
+	assert.NoError(err)
+	assert.Equal(defaultJPEGQuality, imaging.Quality)
+	assert.Equal("box", imaging.ResampleFilter)
+	assert.Equal("smart", imaging.Anchor)
+
+	_, err = decodeImaging(map[string]interface{}{
+		"quality": 123,
+	})
+	assert.Error(err)
+
+	_, err = decodeImaging(map[string]interface{}{
+		"resampleFilter": "asdf",
+	})
+	assert.Error(err)
+
+	_, err = decodeImaging(map[string]interface{}{
+		"anchor": "asdf",
+	})
+	assert.Error(err)
+
+	imaging, err = decodeImaging(map[string]interface{}{
+		"anchor": "Smart",
+	})
+	assert.NoError(err)
+	assert.Equal("smart", imaging.Anchor)
+
 }
 
 func TestImageWithMetadata(t *testing.T) {
@@ -154,7 +248,7 @@ func TestImageWithMetadata(t *testing.T) {
 	image := fetchSunset(assert)
 
 	var meta = []map[string]interface{}{
-		map[string]interface{}{
+		{
 			"title": "My Sunset",
 			"name":  "Sunset #:counter",
 			"src":   "*.jpg",
@@ -168,4 +262,93 @@ func TestImageWithMetadata(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal("Sunset #1", resized.Name())
 
+}
+
+func TestImageResize8BitPNG(t *testing.T) {
+
+	assert := require.New(t)
+
+	image := fetchImage(assert, "gohugoio.png")
+
+	assert.Equal(imaging.PNG, image.format)
+	assert.Equal("/a/gohugoio.png", image.RelPermalink())
+	assert.Equal("image", image.ResourceType())
+
+	resized, err := image.Resize("800x")
+	assert.NoError(err)
+	assert.Equal(imaging.PNG, resized.format)
+	assert.Equal("/a/gohugoio_hu0e1b9e4a4be4d6f86c7b37b9ccce3fbc_73886_800x0_resize_linear_2.png", resized.RelPermalink())
+	assert.Equal(800, resized.Width())
+
+}
+
+func TestImageResizeInSubPath(t *testing.T) {
+
+	assert := require.New(t)
+
+	image := fetchImage(assert, "sub/gohugoio2.png")
+
+	assert.Equal(imaging.PNG, image.format)
+	assert.Equal("/a/sub/gohugoio2.png", image.RelPermalink())
+	assert.Equal("image", image.ResourceType())
+
+	resized, err := image.Resize("101x101")
+	assert.NoError(err)
+	assert.Equal(imaging.PNG, resized.format)
+	assert.Equal("/a/sub/gohugoio2_hu0e1b9e4a4be4d6f86c7b37b9ccce3fbc_73886_101x101_resize_linear_2.png", resized.RelPermalink())
+	assert.Equal(101, resized.Width())
+
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, resized.RelPermalink(), 101, 101)
+	publishedImageFilename := filepath.Clean(resized.RelPermalink())
+	assertImageFile(assert, image.spec.BaseFs.PublishFs, publishedImageFilename, 101, 101)
+	assert.NoError(image.spec.BaseFs.PublishFs.Remove(publishedImageFilename))
+
+	// Cleare mem cache to simulate reading from the file cache.
+	resized.spec.imageCache.clear()
+
+	resizedAgain, err := image.Resize("101x101")
+	assert.NoError(err)
+	assert.Equal("/a/sub/gohugoio2_hu0e1b9e4a4be4d6f86c7b37b9ccce3fbc_73886_101x101_resize_linear_2.png", resizedAgain.RelPermalink())
+	assert.Equal(101, resizedAgain.Width())
+	assertFileCache(assert, image.spec.BaseFs.ResourcesFs, resizedAgain.RelPermalink(), 101, 101)
+	assertImageFile(assert, image.spec.BaseFs.PublishFs, publishedImageFilename, 101, 101)
+
+}
+
+func TestSVGImage(t *testing.T) {
+	assert := require.New(t)
+	spec := newTestResourceSpec(assert)
+	svg := fetchResourceForSpec(spec, assert, "circle.svg")
+	assert.NotNil(svg)
+}
+
+func TestSVGImageContent(t *testing.T) {
+	assert := require.New(t)
+	spec := newTestResourceSpec(assert)
+	svg := fetchResourceForSpec(spec, assert, "circle.svg")
+	assert.NotNil(svg)
+
+	content, err := svg.Content()
+	assert.NoError(err)
+	assert.IsType("", content)
+	assert.Contains(content.(string), `<svg height="100" width="100">`)
+}
+
+func BenchmarkResizeParallel(b *testing.B) {
+	assert := require.New(b)
+	img := fetchSunset(assert)
+
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			w := rand.Intn(10) + 10
+			resized, err := img.Resize(strconv.Itoa(w) + "x")
+			if err != nil {
+				b.Fatal(err)
+			}
+			_, err = resized.Resize(strconv.Itoa(w-1) + "x")
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }

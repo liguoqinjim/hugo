@@ -15,10 +15,15 @@ package hugolib
 
 import (
 	"io/ioutil"
+
+	"github.com/gohugoio/hugo/common/loggers"
+
 	"os"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/gohugoio/hugo/helpers"
 
 	"io"
 
@@ -38,7 +43,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPageBundlerSite(t *testing.T) {
+func TestPageBundlerSiteRegular(t *testing.T) {
 	t.Parallel()
 
 	for _, ugly := range []bool{false, true} {
@@ -46,7 +51,9 @@ func TestPageBundlerSite(t *testing.T) {
 			func(t *testing.T) {
 
 				assert := require.New(t)
-				cfg, fs := newTestBundleSources(t)
+				fs, cfg := newTestBundleSources(t)
+				assert.NoError(loadDefaultSettingsFor(cfg))
+				assert.NoError(loadLanguageSettings(cfg, nil))
 
 				cfg.Set("permalinks", map[string]string{
 					"a": ":sections/:filename",
@@ -71,19 +78,20 @@ func TestPageBundlerSite(t *testing.T) {
 
 				cfg.Set("uglyURLs", ugly)
 
-				s := buildSingleSite(t, deps.DepsCfg{Fs: fs, Cfg: cfg}, BuildCfg{})
+				s := buildSingleSite(t, deps.DepsCfg{Logger: loggers.NewWarningLogger(), Fs: fs, Cfg: cfg}, BuildCfg{})
 
 				th := testHelper{s.Cfg, s.Fs, t}
 
 				assert.Len(s.RegularPages, 8)
 
 				singlePage := s.getPage(KindPage, "a/1.md")
+				assert.Equal("", singlePage.BundleType())
 
 				assert.NotNil(singlePage)
 				assert.Equal(singlePage, s.getPage("page", "a/1"))
 				assert.Equal(singlePage, s.getPage("page", "1"))
 
-				assert.Contains(singlePage.Content, "TheContent")
+				assert.Contains(singlePage.content(), "TheContent")
 
 				if ugly {
 					assert.Equal("/a/1.html", singlePage.RelPermalink())
@@ -101,8 +109,12 @@ func TestPageBundlerSite(t *testing.T) {
 
 				leafBundle1 := s.getPage(KindPage, "b/my-bundle/index.md")
 				assert.NotNil(leafBundle1)
+				assert.Equal("leaf", leafBundle1.BundleType())
 				assert.Equal("b", leafBundle1.Section())
-				assert.NotNil(s.getPage(KindSection, "b"))
+				sectionB := s.getPage(KindSection, "b")
+				assert.NotNil(sectionB)
+				home, _ := s.Info.Home()
+				assert.Equal("branch", home.BundleType())
 
 				// This is a root bundle and should live in the "home section"
 				// See https://github.com/gohugoio/hugo/issues/4332
@@ -125,12 +137,19 @@ func TestPageBundlerSite(t *testing.T) {
 				firstPage := pageResources[0].(*Page)
 				secondPage := pageResources[1].(*Page)
 				assert.Equal(filepath.FromSlash("b/my-bundle/1.md"), firstPage.pathOrTitle(), secondPage.pathOrTitle())
-				assert.Contains(firstPage.Content, "TheContent")
+				assert.Contains(firstPage.content(), "TheContent")
 				assert.Equal(6, len(leafBundle1.Resources))
 
-				assert.Equal(firstPage, pageResources.GetByPrefix("1"))
-				assert.Equal(secondPage, pageResources.GetByPrefix("2"))
-				assert.Nil(pageResources.GetByPrefix("doesnotexist"))
+				// Verify shortcode in bundled page
+				assert.Contains(secondPage.content(), filepath.FromSlash("MyShort in b/my-bundle/2.md"))
+
+				// https://github.com/gohugoio/hugo/issues/4582
+				assert.Equal(leafBundle1, firstPage.Parent())
+				assert.Equal(leafBundle1, secondPage.Parent())
+
+				assert.Equal(firstPage, pageResources.GetMatch("1*"))
+				assert.Equal(secondPage, pageResources.GetMatch("2*"))
+				assert.Nil(pageResources.GetMatch("doesnotexist*"))
 
 				imageResources := leafBundle1.Resources.ByType("image")
 				assert.Equal(3, len(imageResources))
@@ -141,6 +160,7 @@ func TestPageBundlerSite(t *testing.T) {
 
 				assert.Equal(filepath.FromSlash("/work/base/b/my-bundle/c/logo.png"), image.(resource.Source).AbsSourceFilename())
 				assert.Equal("https://example.com/2017/pageslug/c/logo.png", image.Permalink())
+
 				th.assertFileContent(filepath.FromSlash("/work/public/2017/pageslug/c/logo.png"), "content")
 				th.assertFileContent(filepath.FromSlash("/work/public/cpath/2017/pageslug/c/logo.png"), "content")
 
@@ -195,11 +215,11 @@ func TestPageBundlerSiteMultilingual(t *testing.T) {
 			func(t *testing.T) {
 
 				assert := require.New(t)
-				cfg, fs := newTestBundleSourcesMultilingual(t)
-
+				fs, cfg := newTestBundleSourcesMultilingual(t)
 				cfg.Set("uglyURLs", ugly)
 
 				assert.NoError(loadDefaultSettingsFor(cfg))
+				assert.NoError(loadLanguageSettings(cfg, nil))
 				sites, err := NewHugoSites(deps.DepsCfg{Fs: fs, Cfg: cfg})
 				assert.NoError(err)
 				assert.Equal(2, len(sites.Sites))
@@ -245,9 +265,9 @@ func TestPageBundlerSiteMultilingual(t *testing.T) {
 
 				// See https://github.com/gohugoio/hugo/issues/4295
 				// Every resource should have its Name prefixed with its base folder.
-				cBundleResources := bundleWithSubPath.Resources.ByPrefix("c/")
+				cBundleResources := bundleWithSubPath.Resources.Match("c/**")
 				assert.Equal(4, len(cBundleResources))
-				bundlePage := bundleWithSubPath.Resources.GetByPrefix("c/page")
+				bundlePage := bundleWithSubPath.Resources.GetMatch("c/page*")
 				assert.NotNil(bundlePage)
 				assert.IsType(&Page{}, bundlePage)
 
@@ -259,11 +279,13 @@ func TestMultilingualDisableDefaultLanguage(t *testing.T) {
 	t.Parallel()
 
 	assert := require.New(t)
-	cfg, _ := newTestBundleSourcesMultilingual(t)
+	_, cfg := newTestBundleSourcesMultilingual(t)
 
 	cfg.Set("disableLanguages", []string{"en"})
 
 	err := loadDefaultSettingsFor(cfg)
+	assert.NoError(err)
+	err = loadLanguageSettings(cfg, nil)
 	assert.Error(err)
 	assert.Contains(err.Error(), "cannot disable default language")
 }
@@ -272,10 +294,12 @@ func TestMultilingualDisableLanguage(t *testing.T) {
 	t.Parallel()
 
 	assert := require.New(t)
-	cfg, fs := newTestBundleSourcesMultilingual(t)
+	fs, cfg := newTestBundleSourcesMultilingual(t)
 	cfg.Set("disableLanguages", []string{"nn"})
 
 	assert.NoError(loadDefaultSettingsFor(cfg))
+	assert.NoError(loadLanguageSettings(cfg, nil))
+
 	sites, err := NewHugoSites(deps.DepsCfg{Fs: fs, Cfg: cfg})
 	assert.NoError(err)
 	assert.Equal(1, len(sites.Sites))
@@ -298,10 +322,16 @@ func TestMultilingualDisableLanguage(t *testing.T) {
 }
 
 func TestPageBundlerSiteWitSymbolicLinksInContent(t *testing.T) {
-	assert := require.New(t)
-	cfg, fs, workDir := newTestBundleSymbolicSources(t)
+	if runtime.GOOS == "windows" && os.Getenv("CI") == "" {
+		t.Skip("Skip TestPageBundlerSiteWitSymbolicLinksInContent as os.Symlink needs administrator rights on Windows")
+	}
 
-	s := buildSingleSite(t, deps.DepsCfg{Fs: fs, Cfg: cfg, Logger: newWarningLogger()}, BuildCfg{})
+	assert := require.New(t)
+	ps, workDir := newTestBundleSymbolicSources(t)
+	cfg := ps.Cfg
+	fs := ps.Fs
+
+	s := buildSingleSite(t, deps.DepsCfg{Fs: fs, Cfg: cfg, Logger: loggers.NewErrorLogger()}, BuildCfg{})
 
 	th := testHelper{s.Cfg, s.Fs, t}
 
@@ -375,7 +405,7 @@ HEADLESS {{< myShort >}}
 	assert.Equal("Headless Bundle in Topless Bar", headless.Title())
 	assert.Equal("", headless.RelPermalink())
 	assert.Equal("", headless.Permalink())
-	assert.Contains(headless.Content, "HEADLESS SHORTCODE")
+	assert.Contains(headless.content(), "HEADLESS SHORTCODE")
 
 	headlessResources := headless.Resources
 	assert.Equal(3, len(headlessResources))
@@ -384,7 +414,7 @@ HEADLESS {{< myShort >}}
 	assert.NotNil(pageResource)
 	assert.IsType(&Page{}, pageResource)
 	p := pageResource.(*Page)
-	assert.Contains(p.Content, "SHORTCODE")
+	assert.Contains(p.content(), "SHORTCODE")
 	assert.Equal("p1.md", p.Name())
 
 	th := testHelper{s.Cfg, s.Fs, t}
@@ -398,7 +428,7 @@ HEADLESS {{< myShort >}}
 
 }
 
-func newTestBundleSources(t *testing.T) (*viper.Viper, *hugofs.Fs) {
+func newTestBundleSources(t *testing.T) (*hugofs.Fs, *viper.Viper) {
 	cfg, fs := newTestCfg()
 	assert := require.New(t)
 
@@ -419,6 +449,17 @@ date: 2017-10-09
 ---
 
 TheContent.
+`
+
+	pageContentShortcode := `---
+title: "Bundle Galore"
+slug: pageslug
+date: 2017-10-09
+---
+
+TheContent.
+
+{{< myShort >}}
 `
 
 	pageWithImageShortcodeAndResourceMetadataContent := `---
@@ -449,7 +490,7 @@ TheContent.
 	singleLayout := `
 Single Title: {{ .Title }}
 Content: {{ .Content }}
-{{ $sunset := .Resources.GetByPrefix "my-sunset-1" }}
+{{ $sunset := .Resources.GetMatch "my-sunset-1*" }}
 {{ with $sunset }}
 Sunset RelPermalink: {{ .RelPermalink }}
 {{ $thumb := .Fill "123x123" }}
@@ -467,7 +508,8 @@ Thumb RelPermalink: {{ $thumb.RelPermalink }}
 `
 
 	myShort := `
-{{ $sunset := .Page.Resources.GetByPrefix "my-sunset-2" }}
+MyShort in {{ .Page.Path }}:
+{{ $sunset := .Page.Resources.GetMatch "my-sunset-2*" }}
 {{ with $sunset }}
 Short Sunset RelPermalink: {{ .RelPermalink }}
 {{ $thumb := .Fill "56x56" }}
@@ -500,7 +542,7 @@ Short Thumb Width: {{ $thumb.Width }}
 	// Bundle
 	writeSource(t, fs, filepath.Join(workDir, "base", "b", "my-bundle", "index.md"), pageWithImageShortcodeAndResourceMetadataContent)
 	writeSource(t, fs, filepath.Join(workDir, "base", "b", "my-bundle", "1.md"), pageContent)
-	writeSource(t, fs, filepath.Join(workDir, "base", "b", "my-bundle", "2.md"), pageContent)
+	writeSource(t, fs, filepath.Join(workDir, "base", "b", "my-bundle", "2.md"), pageContentShortcode)
 	writeSource(t, fs, filepath.Join(workDir, "base", "b", "my-bundle", "custom-mime.bep"), "bepsays")
 	writeSource(t, fs, filepath.Join(workDir, "base", "b", "my-bundle", "c", "logo.png"), "content")
 
@@ -540,10 +582,11 @@ Content for 은행.
 	src.Close()
 	assert.NoError(err)
 
-	return cfg, fs
+	return fs, cfg
+
 }
 
-func newTestBundleSourcesMultilingual(t *testing.T) (*viper.Viper, *hugofs.Fs) {
+func newTestBundleSourcesMultilingual(t *testing.T) (*hugofs.Fs, *viper.Viper) {
 	cfg, fs := newTestCfg()
 
 	workDir := "/work"
@@ -623,10 +666,10 @@ TheContent.
 	writeSource(t, fs, filepath.Join(workDir, "base", "bf", "my-bf-bundle", "index.nn.md"), pageContent)
 	writeSource(t, fs, filepath.Join(workDir, "base", "bf", "my-bf-bundle", "page.md"), pageContent)
 
-	return cfg, fs
+	return fs, cfg
 }
 
-func newTestBundleSymbolicSources(t *testing.T) (*viper.Viper, *hugofs.Fs, string) {
+func newTestBundleSymbolicSources(t *testing.T) (*helpers.PathSpec, string) {
 	assert := require.New(t)
 	// We need to use the OS fs for this.
 	cfg := viper.New()
@@ -646,6 +689,10 @@ func newTestBundleSymbolicSources(t *testing.T) (*viper.Viper, *hugofs.Fs, strin
 	cfg.Set("workingDir", workDir)
 	cfg.Set("contentDir", contentDir)
 	cfg.Set("baseURL", "https://example.com")
+
+	if err := loadLanguageSettings(cfg, nil); err != nil {
+		t.Fatal(err)
+	}
 
 	layout := `{{ .Title }}|{{ .Content }}`
 	pageContent := `---
@@ -706,5 +753,7 @@ TheContent.
 	os.Chdir(workDir)
 	assert.NoError(err)
 
-	return cfg, fs, workDir
+	ps, _ := helpers.NewPathSpec(fs, cfg)
+
+	return ps, workDir
 }

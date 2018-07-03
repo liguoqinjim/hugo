@@ -24,7 +24,7 @@ import (
 
 // renderPages renders pages each corresponding to a markdown file.
 // TODO(bep np doc
-func (s *Site) renderPages(filter map[string]bool) error {
+func (s *Site) renderPages(cfg *BuildCfg) error {
 
 	results := make(chan error)
 	pages := make(chan *Page)
@@ -44,16 +44,12 @@ func (s *Site) renderPages(filter map[string]bool) error {
 	if len(s.headlessPages) > 0 {
 		wg.Add(1)
 		go headlessPagesPublisher(s, wg)
-
 	}
 
-	hasFilter := filter != nil && len(filter) > 0
-
 	for _, page := range s.Pages {
-		if hasFilter && !filter[page.RelPermalink()] {
-			continue
+		if cfg.shouldRender(page) {
+			pages <- page
 		}
-		pages <- page
 	}
 
 	close(pages)
@@ -73,7 +69,11 @@ func headlessPagesPublisher(s *Site, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for _, page := range s.headlessPages {
 		outFormat := page.outputFormats[0] // There is only one
-		pageOutput, err := newPageOutput(page, false, outFormat)
+		if outFormat != s.rc.Format {
+			// Avoid double work.
+			continue
+		}
+		pageOutput, err := newPageOutput(page, false, false, outFormat)
 		if err == nil {
 			page.mainPageOutput = pageOutput
 			err = pageOutput.renderResources()
@@ -92,28 +92,29 @@ func pageRenderer(s *Site, pages <-chan *Page, results chan<- error, wg *sync.Wa
 
 		for i, outFormat := range page.outputFormats {
 
+			if outFormat != page.s.rc.Format {
+				// Will be rendered  ... later.
+				continue
+			}
+
 			var (
 				pageOutput *PageOutput
 				err        error
 			)
 
 			if i == 0 {
-				pageOutput, err = newPageOutput(page, false, outFormat)
-				page.mainPageOutput = pageOutput
-			}
-
-			if outFormat != page.s.rc.Format {
-				// Will be rendered  ... later.
-				continue
-			}
-
-			if pageOutput == nil {
-				pageOutput, err = page.mainPageOutput.copyWithFormat(outFormat)
+				pageOutput = page.mainPageOutput
+			} else {
+				pageOutput, err = page.mainPageOutput.copyWithFormat(outFormat, true)
 			}
 
 			if err != nil {
 				s.Log.ERROR.Printf("Failed to create output page for type %q for page %q: %s", outFormat.Name, page, err)
 				continue
+			}
+
+			if pageOutput == nil {
+				panic("no pageOutput")
 			}
 
 			// We only need to re-publish the resources if the output format is different
@@ -291,7 +292,7 @@ func (s *Site) render404() error {
 	htmlOut := output.HTMLFormat
 	htmlOut.BaseName = "404"
 
-	pageOutput, err := newPageOutput(p, false, htmlOut)
+	pageOutput, err := newPageOutput(p, false, false, htmlOut)
 	if err != nil {
 		return err
 	}
@@ -373,7 +374,7 @@ func (s *Site) renderRobotsTXT() error {
 
 	rLayouts := []string{"robots.txt", "_default/robots.txt", "_internal/_default/robots.txt"}
 
-	pageOutput, err := newPageOutput(p, false, output.RobotsTxtFormat)
+	pageOutput, err := newPageOutput(p, false, false, output.RobotsTxtFormat)
 	if err != nil {
 		return err
 	}

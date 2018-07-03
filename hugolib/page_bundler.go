@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"math"
 	"runtime"
-	"strings"
 
 	// Use this until errgroup gets ported to context
 	// See https://github.com/golang/go/issues/19781
@@ -26,11 +25,11 @@ import (
 )
 
 type siteContentProcessor struct {
-	baseDir string
-
 	site *Site
 
 	handleContent contentHandler
+
+	ctx context.Context
 
 	// The input file bundles.
 	fileBundlesChan chan *bundleDir
@@ -39,7 +38,7 @@ type siteContentProcessor struct {
 	fileSinglesChan chan *fileInfo
 
 	// These assets should be just copied to destination.
-	fileAssetsChan chan []string
+	fileAssetsChan chan []pathLangFile
 
 	numWorkers int
 
@@ -51,7 +50,28 @@ type siteContentProcessor struct {
 	partialBuild bool
 }
 
-func newSiteContentProcessor(baseDir string, partialBuild bool, s *Site) *siteContentProcessor {
+func (s *siteContentProcessor) processBundle(b *bundleDir) {
+	select {
+	case s.fileBundlesChan <- b:
+	case <-s.ctx.Done():
+	}
+}
+
+func (s *siteContentProcessor) processSingle(fi *fileInfo) {
+	select {
+	case s.fileSinglesChan <- fi:
+	case <-s.ctx.Done():
+	}
+}
+
+func (s *siteContentProcessor) processAssets(assets []pathLangFile) {
+	select {
+	case s.fileAssetsChan <- assets:
+	case <-s.ctx.Done():
+	}
+}
+
+func newSiteContentProcessor(ctx context.Context, partialBuild bool, s *Site) *siteContentProcessor {
 	numWorkers := 12
 	if n := runtime.NumCPU() * 3; n > numWorkers {
 		numWorkers = n
@@ -60,13 +80,13 @@ func newSiteContentProcessor(baseDir string, partialBuild bool, s *Site) *siteCo
 	numWorkers = int(math.Ceil(float64(numWorkers) / float64(len(s.owner.Sites))))
 
 	return &siteContentProcessor{
+		ctx:             ctx,
 		partialBuild:    partialBuild,
-		baseDir:         baseDir,
 		site:            s,
 		handleContent:   newHandlerChain(s),
 		fileBundlesChan: make(chan *bundleDir, numWorkers),
 		fileSinglesChan: make(chan *fileInfo, numWorkers),
-		fileAssetsChan:  make(chan []string, numWorkers),
+		fileAssetsChan:  make(chan []pathLangFile, numWorkers),
 		numWorkers:      numWorkers,
 		pagesChan:       make(chan *Page, numWorkers),
 	}
@@ -80,7 +100,7 @@ func (s *siteContentProcessor) closeInput() {
 
 func (s *siteContentProcessor) process(ctx context.Context) error {
 	g1, ctx := errgroup.WithContext(ctx)
-	g2, _ := errgroup.WithContext(ctx)
+	g2, ctx := errgroup.WithContext(ctx)
 
 	// There can be only one of these per site.
 	g1.Go(func() error {
@@ -119,18 +139,16 @@ func (s *siteContentProcessor) process(ctx context.Context) error {
 		g2.Go(func() error {
 			for {
 				select {
-				case filenames, ok := <-s.fileAssetsChan:
+				case files, ok := <-s.fileAssetsChan:
 					if !ok {
 						return nil
 					}
-					for _, filename := range filenames {
-						name := strings.TrimPrefix(filename, s.baseDir)
-						f, err := s.site.Fs.Source.Open(filename)
+					for _, file := range files {
+						f, err := s.site.BaseFs.ContentFs.Open(file.Filename())
 						if err != nil {
-							return err
+							return fmt.Errorf("failed to open assets file: %s", err)
 						}
-
-						err = s.site.publish(&s.site.PathSpec.ProcessingStats.Files, name, f)
+						err = s.site.publish(&s.site.PathSpec.ProcessingStats.Files, file.Path(), f)
 						f.Close()
 						if err != nil {
 							return err
@@ -161,11 +179,13 @@ func (s *siteContentProcessor) process(ctx context.Context) error {
 		})
 	}
 
-	if err := g2.Wait(); err != nil {
-		return err
-	}
+	err := g2.Wait()
 
 	close(s.pagesChan)
+
+	if err != nil {
+		return err
+	}
 
 	if err := g1.Wait(); err != nil {
 		return err
@@ -178,11 +198,11 @@ func (s *siteContentProcessor) process(ctx context.Context) error {
 }
 
 func (s *siteContentProcessor) readAndConvertContentFile(file *fileInfo) error {
-	ctx := &handlerContext{source: file, baseDir: s.baseDir, pages: s.pagesChan}
+	ctx := &handlerContext{source: file, pages: s.pagesChan}
 	return s.handleContent(ctx).err
 }
 
 func (s *siteContentProcessor) readAndConvertContentBundle(bundle *bundleDir) error {
-	ctx := &handlerContext{bundle: bundle, baseDir: s.baseDir, pages: s.pagesChan}
+	ctx := &handlerContext{bundle: bundle, pages: s.pagesChan}
 	return s.handleContent(ctx).err
 }

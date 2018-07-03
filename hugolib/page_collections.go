@@ -152,6 +152,15 @@ func (*PageCollections) findPagesByKindIn(kind string, inPages Pages) Pages {
 	return pages
 }
 
+func (*PageCollections) findFirstPageByKindIn(kind string, inPages Pages) *Page {
+	for _, p := range inPages {
+		if p.Kind == kind {
+			return p
+		}
+	}
+	return nil
+}
+
 func (*PageCollections) findPagesByKindNotIn(kind string, inPages Pages) Pages {
 	var pages Pages
 	for _, p := range inPages {
@@ -170,8 +179,8 @@ func (c *PageCollections) addPage(page *Page) {
 	c.rawAllPages = append(c.rawAllPages, page)
 }
 
-func (c *PageCollections) removePageByPath(path string) {
-	if i := c.rawAllPages.findPagePosByFilePath(path); i >= 0 {
+func (c *PageCollections) removePageFilename(filename string) {
+	if i := c.rawAllPages.findPagePosByFilename(filename); i >= 0 {
 		c.clearResourceCacheForPage(c.rawAllPages[i])
 		c.rawAllPages = append(c.rawAllPages[:i], c.rawAllPages[i+1:]...)
 	}
@@ -209,6 +218,7 @@ func (c *PageCollections) clearResourceCacheForPage(page *Page) {
 	if len(page.Resources) > 0 {
 		first := page.Resources[0]
 		dir := path.Dir(first.RelPermalink())
+		dir = strings.TrimPrefix(dir, page.LanguagePrefix())
 		// This is done to keep the memory usage in check when doing live reloads.
 		page.s.resourceSpec.DeleteCacheByPrefix(dir)
 	}

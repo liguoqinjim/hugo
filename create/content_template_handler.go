@@ -16,6 +16,7 @@ package create
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -41,7 +42,13 @@ type ArchetypeFileData struct {
 	// used in the archetype template. Also, if this is a multilingual setup,
 	// this site is the site that best matches the target content file, based
 	// on the presence of language code in the filename.
-	Site *hugolib.Site
+	Site *hugolib.SiteInfo
+
+	// Name will in most cases be the same as TranslationBaseName, e.g. "my-post".
+	// But if that value is "index" (bundles), the Name is instead the owning folder.
+	// This is the value you in most cases would want to use to construct the title in your
+	// archetype template.
+	Name string
 
 	// The target content file. Note that the .Content will be empty, as that
 	// has not been created yet.
@@ -51,7 +58,7 @@ type ArchetypeFileData struct {
 const (
 	// ArchetypeTemplateTemplate is used as initial template when adding an archetype template.
 	ArchetypeTemplateTemplate = `---
-title: "{{ replace .TranslationBaseName "-" " " | title }}"
+title: "{{ replace .Name "-" " " | title }}"
 date: {{ .Date }}
 draft: true
 ---
@@ -81,23 +88,37 @@ func executeArcheTypeAsTemplate(s *hugolib.Site, kind, targetPath, archetypeFile
 		err               error
 	)
 
-	sp := source.NewSourceSpec(s.Deps.Cfg, s.Deps.Fs)
+	ps, err := helpers.NewPathSpec(s.Deps.Fs, s.Deps.Cfg)
+	if err != nil {
+		return nil, err
+	}
+	sp := source.NewSourceSpec(ps, ps.Fs.Source)
+
 	f := sp.NewFileInfo("", targetPath, false, nil)
+
+	name := f.TranslationBaseName()
+
+	if name == "index" || name == "_index" {
+		// Page bundles; the directory name will hopefully have a better name.
+		dir := strings.TrimSuffix(f.Dir(), helpers.FilePathSeparator)
+		_, name = filepath.Split(dir)
+	}
 
 	data := ArchetypeFileData{
 		Type: kind,
 		Date: time.Now().Format(time.RFC3339),
+		Name: name,
 		File: f,
-		Site: s,
+		Site: &s.Info,
 	}
 
 	if archetypeFilename == "" {
 		// TODO(bep) archetype revive the issue about wrong tpl funcs arg order
 		archetypeTemplate = []byte(ArchetypeTemplateTemplate)
 	} else {
-		archetypeTemplate, err = afero.ReadFile(s.Fs.Source, archetypeFilename)
+		archetypeTemplate, err = afero.ReadFile(s.BaseFs.Archetypes.Fs, archetypeFilename)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to read archetype file %q: %s", archetypeFilename, err)
+			return nil, fmt.Errorf("failed to read archetype file %s", err)
 		}
 
 	}
@@ -121,15 +142,6 @@ func executeArcheTypeAsTemplate(s *hugolib.Site, kind, targetPath, archetypeFile
 	}
 
 	archetypeContent = []byte(archetypeShortcodeReplacementsPost.Replace(buff.String()))
-
-	if !bytes.Contains(archetypeContent, []byte("date")) || !bytes.Contains(archetypeContent, []byte("title")) {
-		// TODO(bep) remove some time in the future.
-		s.Log.FEEDBACK.Println(fmt.Sprintf(`WARNING: date and/or title missing from archetype file %q.
-From Hugo 0.24 this must be provided in the archetype file itself, if needed. Example:
-%s
-`, archetypeFilename, ArchetypeTemplateTemplate))
-
-	}
 
 	return archetypeContent, nil
 

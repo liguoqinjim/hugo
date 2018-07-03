@@ -5,13 +5,13 @@ logo = "/images/sponsors/forestry-logotype.svg"
 copy = ""
 
 [[banners]]
-name = ""
-link = ""
-logo = ""
+name = "Linode"
+link = "https://www.linode.com/"
+logo = "/images/sponsors/linode-logo_standard_light_medium.png"
 copy = ""
 
 [[banners]]
-name = ""
-link = ""
-logo = ""
+name = "eSolia"
+link = "https://esolia.com/post/why-did-esolia-choose-hugo/"
+logo = "/images/sponsors/esolia-logo.svg"
 copy = ""

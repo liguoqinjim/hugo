@@ -15,8 +15,11 @@ package hugolib
 
 import (
 	"bytes"
+	"fmt"
 
 	"errors"
+
+	jww "github.com/spf13/jwalterweatherman"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/gohugoio/hugo/helpers"
@@ -71,6 +74,11 @@ func (h *HugoSites) Build(config BuildCfg, events ...fsnotify.Event) error {
 		h.Log.FEEDBACK.Println()
 	}
 
+	errorCount := h.Log.LogCountForLevel(jww.LevelError)
+	if errorCount > 0 {
+		return fmt.Errorf("logged %d error(s)", errorCount)
+	}
+
 	return nil
 
 }
@@ -123,6 +131,7 @@ func (h *HugoSites) initRebuild(config *BuildCfg) error {
 		s.resetBuildState()
 	}
 
+	h.resetLogs()
 	helpers.InitLoggers()
 
 	return nil
@@ -160,13 +169,13 @@ func (h *HugoSites) assemble(config *BuildCfg) error {
 	if len(h.Sites) > 1 {
 		// The first is initialized during process; initialize the rest
 		for _, site := range h.Sites[1:] {
-			site.initializeSiteInfo()
+			if err := site.initializeSiteInfo(); err != nil {
+				return err
+			}
 		}
 	}
 
 	if config.whatChanged.source {
-		h.assembleGitInfo()
-
 		for _, s := range h.Sites {
 			if err := s.buildSiteMeta(); err != nil {
 				return err
@@ -216,9 +225,23 @@ func (h *HugoSites) assemble(config *BuildCfg) error {
 func (h *HugoSites) render(config *BuildCfg) error {
 	for _, s := range h.Sites {
 		s.initRenderFormats()
+	}
+
+	for _, s := range h.Sites {
 		for i, rf := range s.renderFormats {
-			s.rc = &siteRenderingContext{Format: rf}
-			s.preparePagesForRender(config)
+			for _, s2 := range h.Sites {
+				// We render site by site, but since the content is lazily rendered
+				// and a site can "borrow" content from other sites, every site
+				// needs this set.
+				s2.rc = &siteRenderingContext{Format: rf}
+
+				isRenderingSite := s == s2
+
+				if err := s2.preparePagesForRender(isRenderingSite && i == 0); err != nil {
+					return err
+				}
+
+			}
 
 			if !config.SkipRender {
 				if err := s.render(config, i); err != nil {

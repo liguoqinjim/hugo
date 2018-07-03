@@ -35,14 +35,18 @@ type LayoutDescriptor struct {
 	Kind    string
 	Lang    string
 	Layout  string
+
+	// Any potential type set in the page's current section and the root section
+	// it lives in.
+	TypeFirstSection   string
+	TypeCurrentSection string
+
 	// LayoutOverride indicates what we should only look for the above layout.
 	LayoutOverride bool
 }
 
 // LayoutHandler calculates the layout template to use to render a given output type.
 type LayoutHandler struct {
-	hasTheme bool
-
 	mu    sync.RWMutex
 	cache map[layoutCacheKey][]string
 }
@@ -53,8 +57,8 @@ type layoutCacheKey struct {
 }
 
 // NewLayoutHandler creates a new LayoutHandler.
-func NewLayoutHandler(hasTheme bool) *LayoutHandler {
-	return &LayoutHandler{hasTheme: hasTheme, cache: make(map[layoutCacheKey][]string)}
+func NewLayoutHandler() *LayoutHandler {
+	return &LayoutHandler{cache: make(map[layoutCacheKey][]string)}
 }
 
 // For returns a layout for the given LayoutDescriptor and options.
@@ -71,30 +75,6 @@ func (l *LayoutHandler) For(d LayoutDescriptor, f Format) ([]string, error) {
 	l.mu.RUnlock()
 
 	layouts := resolvePageTemplate(d, f)
-
-	if l.hasTheme {
-		// From Hugo 0.33 we interleave the project/theme templates. This was kind of a fundamental change, but the
-		// previous behaviour was surprising.
-		// As an example, an `index.html` in theme for the home page will now win over a `_default/list.html` in the project.
-		layoutsWithThemeLayouts := []string{}
-
-		// First place all non internal templates
-		for _, t := range layouts {
-			if !strings.HasPrefix(t, "_internal/") {
-				layoutsWithThemeLayouts = append(layoutsWithThemeLayouts, t)
-				layoutsWithThemeLayouts = append(layoutsWithThemeLayouts, "theme/"+t)
-			}
-		}
-
-		// Lastly place internal templates
-		for _, t := range layouts {
-			if strings.HasPrefix(t, "_internal/") {
-				layoutsWithThemeLayouts = append(layoutsWithThemeLayouts, t)
-			}
-		}
-
-		layouts = layoutsWithThemeLayouts
-	}
 
 	layouts = prependTextPrefixIfNeeded(f, layouts...)
 	layouts = helpers.UniqueStrings(layouts)
@@ -151,6 +131,14 @@ func resolvePageTemplate(d LayoutDescriptor, f Format) []string {
 
 	if d.Type != "" {
 		b.addTypeVariations(d.Type)
+	}
+
+	if d.TypeCurrentSection != "" {
+		b.addTypeVariations(d.TypeCurrentSection)
+	}
+
+	if d.TypeFirstSection != "" {
+		b.addTypeVariations(d.TypeFirstSection)
 	}
 
 	switch d.Kind {

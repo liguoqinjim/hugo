@@ -30,12 +30,12 @@ import (
 
 	// Importing image codecs for image.DecodeConfig
 	"image"
+	"image/draw"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
 
 	"github.com/disintegration/imaging"
-
 	// Import webp codec
 	"sync"
 
@@ -56,6 +56,9 @@ type Imaging struct {
 
 	// Resample filter used. See https://github.com/disintegration/imaging
 	ResampleFilter string
+
+	// The anchor used in Fill. Default is "smart", i.e. Smart Crop.
+	Anchor string
 }
 
 const (
@@ -63,15 +66,27 @@ const (
 	defaultResampleFilter = "box"
 )
 
-var imageFormats = map[string]imaging.Format{
-	".jpg":  imaging.JPEG,
-	".jpeg": imaging.JPEG,
-	".png":  imaging.PNG,
-	".tif":  imaging.TIFF,
-	".tiff": imaging.TIFF,
-	".bmp":  imaging.BMP,
-	".gif":  imaging.GIF,
-}
+var (
+	imageFormats = map[string]imaging.Format{
+		".jpg":  imaging.JPEG,
+		".jpeg": imaging.JPEG,
+		".png":  imaging.PNG,
+		".tif":  imaging.TIFF,
+		".tiff": imaging.TIFF,
+		".bmp":  imaging.BMP,
+		".gif":  imaging.GIF,
+	}
+
+	// Add or increment if changes to an image format's processing requires
+	// re-generation.
+	imageFormatsVersions = map[imaging.Format]int{
+		imaging.PNG: 2, // Floyd Steinberg dithering
+	}
+
+	// Increment to mark all processed images as stale. Only use when absolutely needed.
+	// See the finer grained smartCropVersionNumber and imageFormatsVersions.
+	mainImageVersionNumber = 0
+)
 
 var anchorPositions = map[string]imaging.Anchor{
 	strings.ToLower("Center"):      imaging.Center,
@@ -110,7 +125,12 @@ type Image struct {
 
 	copyToDestinationInit sync.Once
 
+	// Lock used when creating alternate versions of this image.
+	createMu sync.Mutex
+
 	imaging *Imaging
+
+	format imaging.Format
 
 	hash string
 
@@ -132,6 +152,7 @@ func (i *Image) WithNewBase(base string) Resource {
 	return &Image{
 		imaging:         i.imaging,
 		hash:            i.hash,
+		format:          i.format,
 		genericResource: i.genericResource.WithNewBase(base).(*genericResource)}
 }
 
@@ -157,6 +178,9 @@ func (i *Image) Fit(spec string) (*Image, error) {
 // Space delimited config: 200x300 TopLeft
 func (i *Image) Fill(spec string) (*Image, error) {
 	return i.doWithImageConfig("fill", spec, func(src image.Image, conf imageConfig) (image.Image, error) {
+		if conf.AnchorStr == smartCropIdentifier {
+			return smartCrop(src, conf.Width, conf.Height, conf.Anchor, conf.Filter)
+		}
 		return imaging.Fill(src, conf.Width, conf.Height, conf.Anchor, conf.Filter), nil
 	})
 }
@@ -185,7 +209,7 @@ type imageConfig struct {
 }
 
 func (i *Image) isJPEG() bool {
-	name := strings.ToLower(i.relTargetPath)
+	name := strings.ToLower(i.relTargetPath.file)
 	return strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg")
 }
 
@@ -206,16 +230,24 @@ func (i *Image) doWithImageConfig(action, spec string, f func(src image.Image, c
 		conf.Filter = imageFilters[conf.FilterStr]
 	}
 
-	key := i.relTargetPathForRel(i.filenameFromConfig(conf), false)
+	if conf.AnchorStr == "" {
+		conf.AnchorStr = i.imaging.Anchor
+		if !strings.EqualFold(conf.AnchorStr, smartCropIdentifier) {
+			conf.Anchor = anchorPositions[conf.AnchorStr]
+		}
+	}
 
-	return i.spec.imageCache.getOrCreate(i, key, func(resourceCacheFilename string) (*Image, error) {
+	return i.spec.imageCache.getOrCreate(i, conf, func(resourceCacheFilename string) (*Image, error) {
 		ci := i.clone()
+
+		errOp := action
+		errPath := i.AbsSourceFilename()
 
 		ci.setBasePath(conf)
 
 		src, err := i.decodeSource()
 		if err != nil {
-			return nil, err
+			return nil, &os.PathError{Op: errOp, Path: errPath, Err: err}
 		}
 
 		if conf.Rotate != 0 {
@@ -225,7 +257,16 @@ func (i *Image) doWithImageConfig(action, spec string, f func(src image.Image, c
 
 		converted, err := f(src, conf)
 		if err != nil {
-			return ci, err
+			return ci, &os.PathError{Op: errOp, Path: errPath, Err: err}
+		}
+
+		if i.format == imaging.PNG {
+			// Apply the colour palette from the source
+			if paletted, ok := src.(*image.Paletted); ok {
+				tmp := image.NewPaletted(converted.Bounds(), paletted.Palette)
+				draw.FloydSteinberg.Draw(tmp, tmp.Bounds(), converted, converted.Bounds().Min)
+				converted = tmp
+			}
 		}
 
 		b := converted.Bounds()
@@ -237,7 +278,7 @@ func (i *Image) doWithImageConfig(action, spec string, f func(src image.Image, c
 
 }
 
-func (i imageConfig) key() string {
+func (i imageConfig) key(format imaging.Format) string {
 	k := strconv.Itoa(i.Width) + "x" + strconv.Itoa(i.Height)
 	if i.Action != "" {
 		k += "_" + i.Action
@@ -248,18 +289,30 @@ func (i imageConfig) key() string {
 	if i.Rotate != 0 {
 		k += "_r" + strconv.Itoa(i.Rotate)
 	}
-	k += "_" + i.FilterStr + "_" + i.AnchorStr
+	anchor := i.AnchorStr
+	if anchor == smartCropIdentifier {
+		anchor = anchor + strconv.Itoa(smartCropVersionNumber)
+	}
+
+	k += "_" + i.FilterStr
+
+	if strings.EqualFold(i.Action, "fill") {
+		k += "_" + anchor
+	}
+
+	if v, ok := imageFormatsVersions[format]; ok {
+		k += "_" + strconv.Itoa(v)
+	}
+
+	if mainImageVersionNumber > 0 {
+		k += "_" + strconv.Itoa(mainImageVersionNumber)
+	}
+
 	return k
 }
 
-var defaultImageConfig = imageConfig{
-	Action:    "",
-	Anchor:    imaging.Center,
-	AnchorStr: strings.ToLower("Center"),
-}
-
 func newImageConfig(width, height, quality, rotate int, filter, anchor string) imageConfig {
-	c := defaultImageConfig
+	var c imageConfig
 
 	c.Width = width
 	c.Height = height
@@ -287,7 +340,7 @@ func newImageConfig(width, height, quality, rotate int, filter, anchor string) i
 
 func parseImageConfig(config string) (imageConfig, error) {
 	var (
-		c   = defaultImageConfig
+		c   imageConfig
 		err error
 	)
 
@@ -299,7 +352,9 @@ func parseImageConfig(config string) (imageConfig, error) {
 	for _, part := range parts {
 		part = strings.ToLower(part)
 
-		if pos, ok := anchorPositions[part]; ok {
+		if part == smartCropIdentifier {
+			c.AnchorStr = smartCropIdentifier
+		} else if pos, ok := anchorPositions[part]; ok {
 			c.Anchor = pos
 			c.AnchorStr = part
 		} else if filter, ok := imageFilters[part]; ok {
@@ -364,7 +419,7 @@ func (i *Image) initConfig() error {
 			config image.Config
 		)
 
-		f, err = i.spec.Fs.Source.Open(i.AbsSourceFilename())
+		f, err = i.sourceFs().Open(i.AbsSourceFilename())
 		if err != nil {
 			return
 		}
@@ -377,48 +432,52 @@ func (i *Image) initConfig() error {
 		i.config = config
 	})
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to load image config: %s", err)
+	}
+
+	return nil
 }
 
 func (i *Image) decodeSource() (image.Image, error) {
-	file, err := i.spec.Fs.Source.Open(i.AbsSourceFilename())
+	file, err := i.sourceFs().Open(i.AbsSourceFilename())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open image for decode: %s", err)
 	}
 	defer file.Close()
-	return imaging.Decode(file)
+	img, _, err := image.Decode(file)
+	return img, err
 }
 
 func (i *Image) copyToDestination(src string) error {
 	var res error
-
 	i.copyToDestinationInit.Do(func() {
-		target := filepath.Join(i.absPublishDir, i.target())
+		target := i.target()
 
 		// Fast path:
 		// This is a processed version of the original.
 		// If it exists on destination with the same filename and file size, it is
 		// the same file, so no need to transfer it again.
-		if fi, err := i.spec.Fs.Destination.Stat(target); err == nil && fi.Size() == i.osFileInfo.Size() {
+		if fi, err := i.spec.BaseFs.PublishFs.Stat(target); err == nil && fi.Size() == i.osFileInfo.Size() {
 			return
 		}
 
-		in, err := i.spec.Fs.Source.Open(src)
+		in, err := i.sourceFs().Open(src)
 		if err != nil {
 			res = err
 			return
 		}
 		defer in.Close()
 
-		out, err := i.spec.Fs.Destination.Create(target)
+		out, err := i.spec.BaseFs.PublishFs.Create(target)
 		if err != nil && os.IsNotExist(err) {
 			// When called from shortcodes, the target directory may not exist yet.
 			// See https://github.com/gohugoio/hugo/issues/4202
-			if err = i.spec.Fs.Destination.MkdirAll(filepath.Dir(target), os.FileMode(0755)); err != nil {
+			if err = i.spec.BaseFs.PublishFs.MkdirAll(filepath.Dir(target), os.FileMode(0755)); err != nil {
 				res = err
 				return
 			}
-			out, err = i.spec.Fs.Destination.Create(target)
+			out, err = i.spec.BaseFs.PublishFs.Create(target)
 			if err != nil {
 				res = err
 				return
@@ -436,27 +495,23 @@ func (i *Image) copyToDestination(src string) error {
 		}
 	})
 
-	return res
+	if res != nil {
+		return fmt.Errorf("failed to copy image to destination: %s", res)
+	}
+	return nil
 }
 
 func (i *Image) encodeToDestinations(img image.Image, conf imageConfig, resourceCacheFilename, filename string) error {
-	ext := strings.ToLower(helpers.Ext(filename))
+	target := filepath.Clean(filename)
 
-	imgFormat, ok := imageFormats[ext]
-	if !ok {
-		return imaging.ErrUnsupportedFormat
-	}
-
-	target := filepath.Join(i.absPublishDir, filename)
-
-	file1, err := i.spec.Fs.Destination.Create(target)
+	file1, err := i.spec.BaseFs.PublishFs.Create(target)
 	if err != nil && os.IsNotExist(err) {
 		// When called from shortcodes, the target directory may not exist yet.
 		// See https://github.com/gohugoio/hugo/issues/4202
-		if err = i.spec.Fs.Destination.MkdirAll(filepath.Dir(target), os.FileMode(0755)); err != nil {
+		if err = i.spec.BaseFs.PublishFs.MkdirAll(filepath.Dir(target), os.FileMode(0755)); err != nil {
 			return err
 		}
-		file1, err = i.spec.Fs.Destination.Create(target)
+		file1, err = i.spec.BaseFs.PublishFs.Create(target)
 		if err != nil {
 			return err
 		}
@@ -470,11 +525,11 @@ func (i *Image) encodeToDestinations(img image.Image, conf imageConfig, resource
 
 	if resourceCacheFilename != "" {
 		// Also save it to the image resource cache for later reuse.
-		if err = i.spec.Fs.Source.MkdirAll(filepath.Dir(resourceCacheFilename), os.FileMode(0755)); err != nil {
+		if err = i.spec.BaseFs.ResourcesFs.MkdirAll(filepath.Dir(resourceCacheFilename), os.FileMode(0755)); err != nil {
 			return err
 		}
 
-		file2, err := i.spec.Fs.Source.Create(resourceCacheFilename)
+		file2, err := i.spec.BaseFs.ResourcesFs.Create(resourceCacheFilename)
 		if err != nil {
 			return err
 		}
@@ -485,7 +540,7 @@ func (i *Image) encodeToDestinations(img image.Image, conf imageConfig, resource
 		w = file1
 	}
 
-	switch imgFormat {
+	switch i.format {
 	case imaging.JPEG:
 
 		var rgba *image.RGBA
@@ -506,32 +561,35 @@ func (i *Image) encodeToDestinations(img image.Image, conf imageConfig, resource
 			return jpeg.Encode(w, img, &jpeg.Options{Quality: quality})
 		}
 	default:
-		return imaging.Encode(w, img, imgFormat)
+		return imaging.Encode(w, img, i.format)
 	}
 
 }
 
 func (i *Image) clone() *Image {
 	g := *i.genericResource
+	g.resourceContent = &resourceContent{}
 
 	return &Image{
 		imaging:         i.imaging,
 		hash:            i.hash,
+		format:          i.format,
 		genericResource: &g}
 }
 
 func (i *Image) setBasePath(conf imageConfig) {
-	i.relTargetPath = i.filenameFromConfig(conf)
+	i.relTargetPath = i.relTargetPathFromConfig(conf)
 }
 
-func (i *Image) filenameFromConfig(conf imageConfig) string {
-	p1, p2 := helpers.FileAndExt(i.relTargetPath)
+func (i *Image) relTargetPathFromConfig(conf imageConfig) dirFile {
+	p1, p2 := helpers.FileAndExt(i.relTargetPath.file)
+
 	idStr := fmt.Sprintf("_hu%s_%d", i.hash, i.osFileInfo.Size())
 
 	// Do not change for no good reason.
 	const md5Threshold = 100
 
-	key := conf.key()
+	key := conf.key(i.format)
 
 	// It is useful to have the key in clear text, but when nesting transforms, it
 	// can easily be too long to read, and maybe even too long
@@ -552,7 +610,11 @@ func (i *Image) filenameFromConfig(conf imageConfig) string {
 		idStr = ""
 	}
 
-	return fmt.Sprintf("%s%s_%s%s", p1, idStr, key, p2)
+	return dirFile{
+		dir:  i.relTargetPath.dir,
+		file: fmt.Sprintf("%s%s_%s%s", p1, idStr, key, p2),
+	}
+
 }
 
 func decodeImaging(m map[string]interface{}) (Imaging, error) {
@@ -561,8 +623,19 @@ func decodeImaging(m map[string]interface{}) (Imaging, error) {
 		return i, err
 	}
 
-	if i.Quality <= 0 || i.Quality > 100 {
+	if i.Quality == 0 {
 		i.Quality = defaultJPEGQuality
+	} else if i.Quality < 0 || i.Quality > 100 {
+		return i, errors.New("JPEG quality must be a number between 1 and 100")
+	}
+
+	if i.Anchor == "" || strings.EqualFold(i.Anchor, smartCropIdentifier) {
+		i.Anchor = smartCropIdentifier
+	} else {
+		i.Anchor = strings.ToLower(i.Anchor)
+		if _, found := anchorPositions[i.Anchor]; !found {
+			return i, errors.New("invalid anchor value in imaging config")
+		}
 	}
 
 	if i.ResampleFilter == "" {

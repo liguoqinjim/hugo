@@ -11,12 +11,15 @@
 @import '_documentation-styles';
 
 @import '_algolia';
+@import '_carousel';
 @import '_code';
+@import '_tabs';
 @import '_color-scheme';
 @import '_columns';
 @import '_content';
 @import '_content-tables';
 @import '_definition-lists';
+@import '_fluid-type';
 @import '_font-family';
 /*@import '_hljs';*/
 @import '_hugo-internal-template-styling';

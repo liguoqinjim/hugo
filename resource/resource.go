@@ -23,6 +23,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gohugoio/hugo/common/maps"
+
+	"github.com/spf13/afero"
+
 	"github.com/spf13/cast"
 
 	"github.com/gobwas/glob"
@@ -32,10 +36,11 @@ import (
 )
 
 var (
-	_ Resource     = (*genericResource)(nil)
-	_ metaAssigner = (*genericResource)(nil)
-	_ Source       = (*genericResource)(nil)
-	_ Cloner       = (*genericResource)(nil)
+	_ Resource                = (*genericResource)(nil)
+	_ metaAssigner            = (*genericResource)(nil)
+	_ Source                  = (*genericResource)(nil)
+	_ Cloner                  = (*genericResource)(nil)
+	_ ResourcesLanguageMerger = (*Resources)(nil)
 )
 
 const DefaultResourceType = "unknown"
@@ -85,6 +90,24 @@ type Resource interface {
 
 	// Params set in front matter for this resource.
 	Params() map[string]interface{}
+
+	// Content returns this resource's content. It will be equivalent to reading the content
+	// that RelPermalink points to in the published folder.
+	// The return type will be contextual, and should be what you would expect:
+	// * Page: template.HTML
+	// * JSON: String
+	// * Etc.
+	Content() (interface{}, error)
+}
+
+type ResourcesLanguageMerger interface {
+	MergeByLanguage(other Resources) Resources
+	// Needed for integration with the tpl package.
+	MergeByLanguageInterface(other interface{}) (interface{}, error)
+}
+
+type translatedResource interface {
+	TranslationKey() string
 }
 
 // Resources represents a slice of resources, which can be a mix of different types.
@@ -116,7 +139,7 @@ Some examples:
 // "logo" will match logo.png. It returns nil of none found.
 // In potential ambiguous situations, combine it with ByType.
 func (r Resources) GetByPrefix(prefix string) Resource {
-	helpers.Deprecated("Resources", "GetByPrefix", prefixDeprecatedMsg, false)
+	helpers.Deprecated("Resources", "GetByPrefix", prefixDeprecatedMsg, true)
 	prefix = strings.ToLower(prefix)
 	for _, resource := range r {
 		if matchesPrefix(resource, prefix) {
@@ -129,7 +152,7 @@ func (r Resources) GetByPrefix(prefix string) Resource {
 // ByPrefix gets all resources matching the given base filename prefix, e.g
 // "logo" will match logo.png.
 func (r Resources) ByPrefix(prefix string) Resources {
-	helpers.Deprecated("Resources", "ByPrefix", prefixDeprecatedMsg, false)
+	helpers.Deprecated("Resources", "ByPrefix", prefixDeprecatedMsg, true)
 	var matches Resources
 	prefix = strings.ToLower(prefix)
 	for _, resource := range r {
@@ -212,8 +235,39 @@ func getGlob(pattern string) (glob.Glob, error) {
 
 }
 
+// MergeByLanguage adds missing translations in r1 from r2.
+func (r1 Resources) MergeByLanguage(r2 Resources) Resources {
+	result := append(Resources(nil), r1...)
+	m := make(map[string]bool)
+	for _, r := range r1 {
+		if translated, ok := r.(translatedResource); ok {
+			m[translated.TranslationKey()] = true
+		}
+	}
+
+	for _, r := range r2 {
+		if translated, ok := r.(translatedResource); ok {
+			if _, found := m[translated.TranslationKey()]; !found {
+				result = append(result, r)
+			}
+		}
+	}
+	return result
+}
+
+// MergeByLanguageInterface is the generic version of MergeByLanguage. It
+// is here just so it can be called from the tpl package.
+func (r1 Resources) MergeByLanguageInterface(in interface{}) (interface{}, error) {
+	r2, ok := in.(Resources)
+	if !ok {
+		return nil, fmt.Errorf("%T cannot be merged by language", in)
+	}
+	return r1.MergeByLanguage(r2), nil
+}
+
 type Spec struct {
 	*helpers.PathSpec
+
 	mimeTypes media.Types
 
 	// Holds default filter settings etc.
@@ -221,7 +275,7 @@ type Spec struct {
 
 	imageCache *imageCache
 
-	AbsGenImagePath string
+	GenImagePath string
 }
 
 func NewSpec(s *helpers.PathSpec, mimeTypes media.Types) (*Spec, error) {
@@ -230,43 +284,45 @@ func NewSpec(s *helpers.PathSpec, mimeTypes media.Types) (*Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.GetLayoutDirPath()
 
-	genImagePath := s.AbsPathify(filepath.Join(s.Cfg.GetString("resourceDir"), "_gen", "images"))
+	genImagePath := filepath.FromSlash("_gen/images")
 
-	return &Spec{AbsGenImagePath: genImagePath, PathSpec: s, imaging: &imaging, mimeTypes: mimeTypes, imageCache: newImageCache(
-		s,
-		// We're going to write a cache pruning routine later, so make it extremely
-		// unlikely that the user shoots him or herself in the foot
-		// and this is set to a value that represents data he/she
-		// cares about. This should be set in stone once released.
-		genImagePath,
-		s.AbsPathify(s.Cfg.GetString("publishDir")))}, nil
+	return &Spec{PathSpec: s,
+		GenImagePath: genImagePath,
+		imaging:      &imaging, mimeTypes: mimeTypes, imageCache: newImageCache(
+			s,
+			// We're going to write a cache pruning routine later, so make it extremely
+			// unlikely that the user shoots him or herself in the foot
+			// and this is set to a value that represents data he/she
+			// cares about. This should be set in stone once released.
+			genImagePath,
+		)}, nil
 }
 
 func (r *Spec) NewResourceFromFile(
 	targetPathBuilder func(base string) string,
-	absPublishDir string,
 	file source.File, relTargetFilename string) (Resource, error) {
 
-	return r.newResource(targetPathBuilder, absPublishDir, file.Filename(), file.FileInfo(), relTargetFilename)
+	return r.newResource(targetPathBuilder, file.Filename(), file.FileInfo(), relTargetFilename)
 }
 
 func (r *Spec) NewResourceFromFilename(
 	targetPathBuilder func(base string) string,
-	absPublishDir,
 	absSourceFilename, relTargetFilename string) (Resource, error) {
 
-	fi, err := r.Fs.Source.Stat(absSourceFilename)
+	fi, err := r.sourceFs().Stat(absSourceFilename)
 	if err != nil {
 		return nil, err
 	}
-	return r.newResource(targetPathBuilder, absPublishDir, absSourceFilename, fi, relTargetFilename)
+	return r.newResource(targetPathBuilder, absSourceFilename, fi, relTargetFilename)
+}
+
+func (r *Spec) sourceFs() afero.Fs {
+	return r.PathSpec.BaseFs.ContentFs
 }
 
 func (r *Spec) newResource(
 	targetPathBuilder func(base string) string,
-	absPublishDir,
 	absSourceFilename string, fi os.FileInfo, relTargetFilename string) (Resource, error) {
 
 	var mimeType string
@@ -283,12 +339,21 @@ func (r *Spec) newResource(
 		}
 	}
 
-	gr := r.newGenericResource(targetPathBuilder, fi, absPublishDir, absSourceFilename, filepath.ToSlash(relTargetFilename), mimeType)
+	gr := r.newGenericResource(targetPathBuilder, fi, absSourceFilename, relTargetFilename, mimeType)
 
 	if mimeType == "image" {
-		f, err := r.Fs.Source.Open(absSourceFilename)
+		ext := strings.ToLower(helpers.Ext(absSourceFilename))
+
+		imgFormat, ok := imageFormats[ext]
+		if !ok {
+			// This allows SVG etc. to be used as resources. They will not have the methods of the Image, but
+			// that would not (currently) have worked.
+			return gr, nil
+		}
+
+		f, err := gr.sourceFs().Open(absSourceFilename)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to open image source file: %s", err)
 		}
 		defer f.Close()
 
@@ -299,6 +364,7 @@ func (r *Spec) newResource(
 
 		return &Image{
 			hash:            hash,
+			format:          imgFormat,
 			imaging:         r.imaging,
 			genericResource: gr}, nil
 	}
@@ -322,7 +388,7 @@ func (r *Spec) CacheStats() string {
 	s := fmt.Sprintf("Cache entries: %d", len(r.imageCache.store))
 
 	count := 0
-	for k, _ := range r.imageCache.store {
+	for k := range r.imageCache.store {
 		if count > 5 {
 			break
 		}
@@ -333,10 +399,26 @@ func (r *Spec) CacheStats() string {
 	return s
 }
 
+type dirFile struct {
+	// This is the directory component with Unix-style slashes.
+	dir string
+	// This is the file component.
+	file string
+}
+
+func (d dirFile) path() string {
+	return path.Join(d.dir, d.file)
+}
+
+type resourceContent struct {
+	content     string
+	contentInit sync.Once
+}
+
 // genericResource represents a generic linkable resource.
 type genericResource struct {
 	// The relative path to this resource.
-	relTargetPath string
+	relTargetPath dirFile
 
 	// Base is set when the output format's path has a offset, e.g. for AMP.
 	base string
@@ -346,21 +428,56 @@ type genericResource struct {
 	params map[string]interface{}
 
 	// Absolute filename to the source, including any content folder path.
-	absSourceFilename string
-	absPublishDir     string
-	resourceType      string
-	osFileInfo        os.FileInfo
+	// Note that this is absolute in relation to the filesystem it is stored in.
+	// It can be a base path filesystem, and then this filename will not match
+	// the path to the file on the real filesystem.
+	sourceFilename string
 
-	spec              *Spec
+	// This may be set to tell us to look in another filesystem for this resource.
+	// We, by default, use the sourceFs filesystem in the spec below.
+	overriddenSourceFs afero.Fs
+
+	spec *Spec
+
+	resourceType string
+	osFileInfo   os.FileInfo
+
 	targetPathBuilder func(rel string) string
+
+	// We create copies of this struct, so this needs to be a pointer.
+	*resourceContent
+}
+
+func (l *genericResource) Content() (interface{}, error) {
+	var err error
+	l.contentInit.Do(func() {
+		var b []byte
+
+		b, err := afero.ReadFile(l.sourceFs(), l.AbsSourceFilename())
+		if err != nil {
+			return
+		}
+
+		l.content = string(b)
+
+	})
+
+	return l.content, err
+}
+
+func (l *genericResource) sourceFs() afero.Fs {
+	if l.overriddenSourceFs != nil {
+		return l.overriddenSourceFs
+	}
+	return l.spec.sourceFs()
 }
 
 func (l *genericResource) Permalink() string {
-	return l.spec.PermalinkForBaseURL(l.relPermalinkForRel(l.relTargetPath, false), l.spec.BaseURL.String())
+	return l.spec.PermalinkForBaseURL(l.relPermalinkForRel(l.relTargetPath.path(), false), l.spec.BaseURL.String())
 }
 
 func (l *genericResource) RelPermalink() string {
-	return l.relPermalinkForRel(l.relTargetPath, true)
+	return l.relPermalinkForRel(l.relTargetPath.path(), true)
 }
 
 func (l *genericResource) Name() string {
@@ -400,6 +517,7 @@ func (l *genericResource) updateParams(params map[string]interface{}) {
 // Implement the Cloner interface.
 func (l genericResource) WithNewBase(base string) Resource {
 	l.base = base
+	l.resourceContent = &resourceContent{}
 	return &l
 }
 
@@ -432,19 +550,20 @@ func (l *genericResource) ResourceType() string {
 }
 
 func (l *genericResource) AbsSourceFilename() string {
-	return l.absSourceFilename
+	return l.sourceFilename
+}
+
+func (l *genericResource) String() string {
+	return fmt.Sprintf("Resource(%s: %s)", l.resourceType, l.name)
 }
 
 func (l *genericResource) Publish() error {
-	f, err := l.spec.Fs.Source.Open(l.AbsSourceFilename())
+	f, err := l.sourceFs().Open(l.AbsSourceFilename())
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-
-	target := filepath.Join(l.absPublishDir, l.target())
-
-	return helpers.WriteToDisk(target, f, l.spec.Fs.Destination)
+	return helpers.WriteToDisk(l.target(), f, l.spec.BaseFs.PublishFs)
 }
 
 const counterPlaceHolder = ":counter"
@@ -464,10 +583,10 @@ func AssignMetadata(metadata []map[string]interface{}, resources ...Resource) er
 		}
 
 		var (
-			nameSet, titleSet bool
-			currentCounter    = 0
-			counterFound      bool
-			resourceSrcKey    = strings.ToLower(r.Name())
+			nameSet, titleSet                   bool
+			nameCounter, titleCounter           = 0, 0
+			nameCounterFound, titleCounterFound bool
+			resourceSrcKey                      = strings.ToLower(r.Name())
 		)
 
 		ma := r.(metaAssigner)
@@ -491,15 +610,16 @@ func AssignMetadata(metadata []map[string]interface{}, resources ...Resource) er
 					name, found := meta["name"]
 					if found {
 						name := cast.ToString(name)
-						if !counterFound {
-							counterFound = strings.Contains(name, counterPlaceHolder)
+						if !nameCounterFound {
+							nameCounterFound = strings.Contains(name, counterPlaceHolder)
 						}
-						if counterFound && currentCounter == 0 {
-							currentCounter = counters[srcKey] + 1
-							counters[srcKey] = currentCounter
+						if nameCounterFound && nameCounter == 0 {
+							counterKey := "name_" + srcKey
+							nameCounter = counters[counterKey] + 1
+							counters[counterKey] = nameCounter
 						}
 
-						ma.setName(replaceResourcePlaceholders(name, currentCounter))
+						ma.setName(replaceResourcePlaceholders(name, nameCounter))
 						nameSet = true
 					}
 				}
@@ -508,14 +628,15 @@ func AssignMetadata(metadata []map[string]interface{}, resources ...Resource) er
 					title, found := meta["title"]
 					if found {
 						title := cast.ToString(title)
-						if !counterFound {
-							counterFound = strings.Contains(title, counterPlaceHolder)
+						if !titleCounterFound {
+							titleCounterFound = strings.Contains(title, counterPlaceHolder)
 						}
-						if counterFound && currentCounter == 0 {
-							currentCounter = counters[srcKey] + 1
-							counters[srcKey] = currentCounter
+						if titleCounterFound && titleCounter == 0 {
+							counterKey := "title_" + srcKey
+							titleCounter = counters[counterKey] + 1
+							counters[counterKey] = titleCounter
 						}
-						ma.setTitle((replaceResourcePlaceholders(title, currentCounter)))
+						ma.setTitle((replaceResourcePlaceholders(title, titleCounter)))
 						titleSet = true
 					}
 				}
@@ -524,7 +645,7 @@ func AssignMetadata(metadata []map[string]interface{}, resources ...Resource) er
 				if found {
 					m := cast.ToStringMap(params)
 					// Needed for case insensitive fetching of params values
-					helpers.ToLowerMap(m)
+					maps.ToLower(m)
 					ma.updateParams(m)
 				}
 			}
@@ -539,31 +660,35 @@ func replaceResourcePlaceholders(in string, counter int) string {
 }
 
 func (l *genericResource) target() string {
-	target := l.relTargetPathForRel(l.relTargetPath, false)
+	target := l.relTargetPathForRel(l.relTargetPath.path(), false)
 	if l.spec.PathSpec.Languages.IsMultihost() {
 		target = path.Join(l.spec.PathSpec.Language.Lang, target)
 	}
-	return target
+	return filepath.Clean(target)
 }
 
 func (r *Spec) newGenericResource(
 	targetPathBuilder func(base string) string,
 	osFileInfo os.FileInfo,
-	absPublishDir,
-	absSourceFilename,
+	sourceFilename,
 	baseFilename,
 	resourceType string) *genericResource {
+
+	// This value is used both to construct URLs and file paths, but start
+	// with a Unix-styled path.
+	baseFilename = filepath.ToSlash(baseFilename)
+	fpath, fname := path.Split(baseFilename)
 
 	return &genericResource{
 		targetPathBuilder: targetPathBuilder,
 		osFileInfo:        osFileInfo,
-		absPublishDir:     absPublishDir,
-		absSourceFilename: absSourceFilename,
-		relTargetPath:     baseFilename,
+		sourceFilename:    sourceFilename,
+		relTargetPath:     dirFile{dir: fpath, file: fname},
 		resourceType:      resourceType,
 		spec:              r,
 		params:            make(map[string]interface{}),
 		name:              baseFilename,
 		title:             baseFilename,
+		resourceContent:   &resourceContent{},
 	}
 }

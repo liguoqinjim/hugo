@@ -88,7 +88,7 @@ func (p *Page) initTargetPathDescriptor() error {
 		Sections:    p.sections,
 		UglyURLs:    p.s.Info.uglyURLs(p),
 		Dir:         filepath.ToSlash(p.Source.Dir()),
-		URL:         p.URLPath.frontMatterURL,
+		URL:         p.frontMatterURL,
 		IsMultihost: p.s.owner.IsMultihost(),
 	}
 
@@ -208,11 +208,15 @@ func createTargetPath(d targetPathDescriptor) string {
 		} else {
 			pagePath = filepath.Join(pagePath, d.URL)
 		}
+
 		if d.Addends != "" {
 			pagePath = filepath.Join(pagePath, d.Addends)
-		} else if strings.HasSuffix(d.URL, "/") || !strings.Contains(d.URL, ".") {
+		}
+
+		if strings.HasSuffix(d.URL, "/") || !strings.Contains(d.URL, ".") {
 			pagePath = filepath.Join(pagePath, d.Type.BaseName+d.Type.MediaType.FullSuffix())
 		}
+
 	} else if d.Kind == KindPage {
 		if d.ExpandedPermalink != "" {
 			pagePath = filepath.Join(pagePath, d.ExpandedPermalink)

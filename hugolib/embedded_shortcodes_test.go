@@ -69,7 +69,7 @@ func doTestShortcodeCrossrefs(t *testing.T, relative bool) {
 
 	require.Len(t, s.RegularPages, 1)
 
-	output := string(s.RegularPages[0].Content)
+	output := string(s.RegularPages[0].content())
 
 	if !strings.Contains(output, expected) {
 		t.Errorf("Got\n%q\nExpected\n%q", output, expected)
@@ -123,22 +123,22 @@ func TestShortcodeFigure(t *testing.T) {
 	}{
 		{
 			`{{< figure src="/img/hugo-logo.png" >}}`,
-			"(?s)\n<figure >.*?<img src=\"/img/hugo-logo.png\" />.*?</figure>\n",
+			"(?s)\n<figure>.*?<img src=\"/img/hugo-logo.png\" />.*?</figure>\n",
 		},
 		{
 			// set alt
 			`{{< figure src="/img/hugo-logo.png" alt="Hugo logo" >}}`,
-			"(?s)\n<figure >.*?<img src=\"/img/hugo-logo.png\" alt=\"Hugo logo\" />.*?</figure>\n",
+			"(?s)\n<figure>.*?<img src=\"/img/hugo-logo.png\" alt=\"Hugo logo\" />.*?</figure>\n",
 		},
 		// set title
 		{
 			`{{< figure src="/img/hugo-logo.png" title="Hugo logo" >}}`,
-			"(?s)\n<figure >.*?<img src=\"/img/hugo-logo.png\" />.*?<figcaption>.*?<h4>Hugo logo</h4>.*?</figcaption>.*?</figure>\n",
+			"(?s)\n<figure>.*?<img src=\"/img/hugo-logo.png\" />.*?<figcaption>.*?<h4>Hugo logo</h4>.*?</figcaption>.*?</figure>\n",
 		},
 		// set attr and attrlink
 		{
 			`{{< figure src="/img/hugo-logo.png" attr="Hugo logo" attrlink="/img/hugo-logo.png" >}}`,
-			"(?s)\n<figure >.*?<img src=\"/img/hugo-logo.png\" />.*?<figcaption>.*?<p>.*?<a href=\"/img/hugo-logo.png\">.*?Hugo logo.*?</a>.*?</p>.*?</figcaption>.*?</figure>\n",
+			"(?s)\n<figure>.*?<img src=\"/img/hugo-logo.png\" />.*?<figcaption>.*?<p>.*?<a href=\"/img/hugo-logo.png\">.*?Hugo logo.*?</a>.*?</p>.*?</figcaption>.*?</figure>\n",
 		},
 	} {
 
@@ -157,35 +157,6 @@ title: Shorty
 
 		th.assertFileContentRegexp(filepath.Join("public", "simple", "index.html"), this.expected)
 
-	}
-}
-
-func TestShortcodeSpeakerdeck(t *testing.T) {
-	t.Parallel()
-
-	for _, this := range []struct {
-		in, expected string
-	}{
-		{
-			`{{< speakerdeck 4e8126e72d853c0060001f97 >}}`,
-			"(?s)<script async class='speakerdeck-embed' data-id='4e8126e72d853c0060001f97'.*?>.*?</script>",
-		},
-	} {
-
-		var (
-			cfg, fs = newTestCfg()
-			th      = testHelper{cfg, fs, t}
-		)
-
-		writeSource(t, fs, filepath.Join("content", "simple.md"), fmt.Sprintf(`---
-title: Shorty
----
-%s`, this.in))
-		writeSource(t, fs, filepath.Join("layouts", "_default", "single.html"), `{{ .Content }}`)
-
-		buildSingleSite(t, deps.DepsCfg{Fs: fs, Cfg: cfg}, BuildCfg{})
-
-		th.assertFileContentRegexp(filepath.Join("public", "simple", "index.html"), this.expected)
 	}
 }
 
@@ -197,17 +168,17 @@ func TestShortcodeYoutube(t *testing.T) {
 	}{
 		{
 			`{{< youtube w7Ft2ymGmfc >}}`,
-			"(?s)\n<div style=\".*?\">.*?<iframe src=\"//www.youtube.com/embed/w7Ft2ymGmfc\" style=\".*?\" allowfullscreen frameborder=\"0\" title=\"YouTube Video\">.*?</iframe>.*?</div>\n",
+			"(?s)\n<div style=\".*?\">.*?<iframe src=\"//www.youtube.com/embed/w7Ft2ymGmfc\" style=\".*?\" allowfullscreen title=\"YouTube Video\">.*?</iframe>.*?</div>\n",
 		},
 		// set class
 		{
 			`{{< youtube w7Ft2ymGmfc video>}}`,
-			"(?s)\n<div class=\"video\">.*?<iframe src=\"//www.youtube.com/embed/w7Ft2ymGmfc\" allowfullscreen frameborder=\"0\" title=\"YouTube Video\">.*?</iframe>.*?</div>\n",
+			"(?s)\n<div class=\"video\">.*?<iframe src=\"//www.youtube.com/embed/w7Ft2ymGmfc\" allowfullscreen title=\"YouTube Video\">.*?</iframe>.*?</div>\n",
 		},
 		// set class and autoplay (using named params)
 		{
 			`{{< youtube id="w7Ft2ymGmfc" class="video" autoplay="true" >}}`,
-			"(?s)\n<div class=\"video\">.*?<iframe src=\"//www.youtube.com/embed/w7Ft2ymGmfc\\?autoplay=1\".*?allowfullscreen frameborder=\"0\" title=\"YouTube Video\">.*?</iframe>.*?</div>",
+			"(?s)\n<div class=\"video\">.*?<iframe src=\"//www.youtube.com/embed/w7Ft2ymGmfc\\?autoplay=1\".*?allowfullscreen title=\"YouTube Video\">.*?</iframe>.*?</div>",
 		},
 	} {
 		var (

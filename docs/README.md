@@ -1,6 +1,6 @@
 # Hugo Docs
 
-Documentation site for [Hugo](https://github.com/gohugoio/hugo), the very fast and flexible static site generator built with love in GoLang.
+Documentation site for [Hugo](https://github.com/gohugoio/hugo), the very fast and flexible static site generator built with love in Go.
 
 ## Contributing
 
@@ -9,6 +9,12 @@ We welcome contributions to Hugo of any kind including documentation, suggestion
 Note that this repository contains solely the documentation for Hugo. For contributions that aren't documentation-related please refer to the [hugo](https://github.com/gohugoio/hugo) repository. 
 
 *Pull requests shall **only** contain changes to the actual documentation. However, changes on the code base of Hugo **and** the documentation shall be a single, atomic pull request in the [hugo](https://github.com/gohugoio/hugo) repository.*
+
+Spelling fixes are most welcomed, and if you want to contribute longer sections to the documentation, it would be great if you had these in mind when writing:
+
+* Short is good. People go to the library to read novels. If there is more than one way to _do a thing_ in Hugo, describe the current _best practice_ (avoid "… but you can also do …" and "… in older versions of Hugo you had to …".
+* For examples, try to find short snippets that teaches people about the concept. If the example is also useful as-is (copy and paste), then great, but don't list long and similar examples just so people can use them on their sites.
+* Hugo has users from all over the world, so an easy to understand and [simple English](https://simple.wikipedia.org/wiki/Basic_English) is good.
 
 ## Branches
 

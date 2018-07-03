@@ -17,6 +17,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/gohugoio/hugo/helpers"
+
+	"github.com/gohugoio/hugo/hugofs"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,10 +39,19 @@ func TestFileInfo(t *testing.T) {
 			assert.Equal(filepath.FromSlash("b/"), f.Dir())
 			assert.Equal(filepath.FromSlash("b/page.md"), f.Path())
 			assert.Equal("b", f.Section())
+			assert.Equal(filepath.FromSlash("page"), f.TranslationBaseName())
+			assert.Equal(filepath.FromSlash("page"), f.BaseFileName())
 
 		}},
 		{filepath.FromSlash("/a/"), filepath.FromSlash("/a/b/c/d/page.md"), func(f *FileInfo) {
 			assert.Equal("b", f.Section())
+
+		}},
+		{filepath.FromSlash("/a/"), filepath.FromSlash("/a/b/page.en.MD"), func(f *FileInfo) {
+			assert.Equal("b", f.Section())
+			assert.Equal(filepath.FromSlash("b/page.en.MD"), f.Path())
+			assert.Equal(filepath.FromSlash("page"), f.TranslationBaseName())
+			assert.Equal(filepath.FromSlash("page.en"), f.BaseFileName())
 
 		}},
 	} {
@@ -46,4 +59,39 @@ func TestFileInfo(t *testing.T) {
 		this.assert(f)
 	}
 
+}
+
+func TestFileInfoLanguage(t *testing.T) {
+	assert := require.New(t)
+	langs := map[string]bool{
+		"sv": true,
+		"en": true,
+	}
+
+	m := afero.NewMemMapFs()
+	lfs := hugofs.NewLanguageFs("sv", langs, m)
+	v := newTestConfig()
+
+	fs := hugofs.NewFrom(m, v)
+
+	ps, err := helpers.NewPathSpec(fs, v)
+	assert.NoError(err)
+	s := SourceSpec{SourceFs: lfs, PathSpec: ps}
+	s.Languages = map[string]interface{}{
+		"en": true,
+	}
+
+	err = afero.WriteFile(lfs, "page.md", []byte("abc"), 0777)
+	assert.NoError(err)
+	err = afero.WriteFile(lfs, "page.en.md", []byte("abc"), 0777)
+	assert.NoError(err)
+
+	sv, _ := lfs.Stat("page.md")
+	en, _ := lfs.Stat("page.en.md")
+
+	fiSv := s.NewFileInfo("", "page.md", false, sv)
+	fiEn := s.NewFileInfo("", "page.en.md", false, en)
+
+	assert.Equal("sv", fiSv.Lang())
+	assert.Equal("en", fiEn.Lang())
 }
